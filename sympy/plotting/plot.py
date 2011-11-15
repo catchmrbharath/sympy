@@ -1,42 +1,42 @@
 """Plotting module for Sympy.
 
-A plot is represented by the ``Plot`` class that contains a reference to the
+A plot is represented by the Plot class that contains a reference to the
 backend and a list of the data series to be plotted. The data series are
 instances of classes meant to simplify getting points and meshes from sympy
-expressions. ``plot_backends`` is a dictionary with all the backends.
+expressions. `plot_backends` is a dictionary with all the backends.
 
 This module gives only the essential. For all the fancy stuff use directly
-the backend. You can get the backend wrapper for every plot from the
-``_backend`` attribute. Moreover the data series classes have various useful
-methods like ``get_points``, ``get_segments``, ``get_meshes``, etc, that may
-be useful if you wish to use another plotting library.
+the backend. You can get the backend wrapper for every plot from the _backend
+attribute. Moreover the data series classes have various useful methods like
+get_points, get_segments, get_meshes, etc, that may be useful if you wish to
+use another plotting library.
 
 Especially if you need publication ready graphs and this module is not enough
-for you - just get the ``_backend`` attribute and add whatever you want
-directly to it. In the case of matplotlib (the common way to graph data in
-python) just copy ``_backend.fig`` which is the figure and ``_backend.ax``
-which is the axis and work on them as you would on any other matplotlib object.
+for you - just get the _backend attribute and add whatever you want directly to
+it. In the case of matplotlib (the common way to graph data in python) just
+copy _backend.fig which is the figure and _backend.ax which is the axis and
+work on them as you would on any other matplotlib objects.
 
 Simplicity of code takes much greater importance than performance. Don't use it
-if you care at all about performance. A new backend instance is initialized
-every time you call ``show()`` and the old one is left to the garbage collector.
+if you care at all about performance. That is especially true about aesthetics.
+The color aesthetic for example creates an array with colors for each line
+segment even if the the color is constant. process_series is called stupidly
+often. A new backend instance is initialized every time you call show() and the
+old one is left to the garbage collector.
 """
 
+import warnings
 from inspect import getargspec
-from itertools import repeat, izip
 from sympy import sympify, Expr, Tuple
 from sympy.external import import_module
 
-from experimental_lambdify import vectorized_lambdify
+from experimental_lambdify import experimental_lambdify
 
-#TODO probably all of the imports after this line can be put inside function to
-# speed up the `from sympy import *` command.
 np = import_module('numpy')
 
 # Backend specific imports - matplotlib
 matplotlib = import_module('matplotlib',
-    __import__kwargs={'fromlist':['pyplot', 'cm', 'collections']},
-    min_module_version='1.0.0')
+    __import__kwargs={'fromlist':['pyplot', 'cm', 'collections']})
 if matplotlib:
     plt = matplotlib.pyplot
     cm = matplotlib.cm
@@ -57,24 +57,24 @@ from sympy.plotting.textplot import textplot
 class Plot(object):
     """The central class of the plotting module.
 
-    For interactive work the function ``plot`` is better suited.
+     For interactive work the function plot is better suited.
 
-    This class permits the plotting of sympy expressions using numerous
+     This class permits the plotting of sympy expressions using numerous
     backends (matplotlib, textplot, the old pyglet module for sympy, Google
     charts api, etc).
 
-    The figure can contain an arbitrary number of plots of sympy expressions,
+     The figure can contain an arbitrary number of plots of sympy expressions,
     lists of coordinates of points, etc. Plot has a private attribute _series that
     contains all data series to be plotted (expressions for lines or surfaces,
     lists of points, etc (all subclasses of BaseSeries)). Those data series are
-    instances of classes not imported by ``from sympy import *``.
+    instances of classes private to the module. They are listed below.
 
-    The customization of the figure is on two levels. Global options that
+     The customization of the figure is on two levels. Global options that
     concern the figure as a whole (eg title, xlabel, scale, etc) and
     per-data series options (eg name) and aesthetics (eg. color, point shape,
     line type, etc.).
 
-    The difference between options and aesthetics is that an aesthetic can be
+     The difference between options and aesthetics is that an aesthetic can be
     a function of the coordinates (or parameters in a parametric plot). The
     supported values for an aesthetic are:
     - None (the backend uses default values)
@@ -83,23 +83,36 @@ class Plot(object):
     - a function of two variables (the first and second coordinate or
     parameters)
     - a function of three variables (only in nonparametric 3D plots)
-    Their implementation depends on the backend so they may not work in some
-    backends.
-
-    If the plot is parametric and the arity of the aesthetic function permits
+     If the plot is parametric and the arity of the aesthetic function permits
     it the aesthetic is calculated over parameters and not over coordinates.
     If the arity does not permit calculation over parameters the calculation is
     done over coordinates.
 
-    Only cartesian coordinates are suported for the moment, but you can use
+     Only cartesian coordinates are suported for the moment, but you can use
     the paremetric plots to plot in polar, spherical and cylindrical
     coordinates.
 
-    The arguments for the constructor Plot must be subclasses of BaseSeries.
+    The arguments for the constructor Plot can be any of the following:
+    - [x coords], [y coords] - 2D list plot
+        implemented in ListSeries
+    - expr, (var, start, end) - 2D function plot
+        implemented in LineOver1DRangeSeries
+    - expr_x, expr_y, (var, start, end) - 2D parametric plot
+        implemented in Parametric2DLineSeries
+    - expr_x, expr_y, expr_z, (var, start, end) - 3D parametric line plot
+        implemented in Parametric3DLineSeries
+    - expr, (var_x, start, end), (var_y, start, end) - surface plot
+        implemented in SurfaceOver2DRangeSeries
+    - expr_x, expr_y, expr_z, (var_u, start, end), (var_v, start, end) - 3D
+      parametric surface plot
+        implemented in ParametricSurfaceSeries
+    - subclasses of BaseSeries
+    - tuples containing any of the aforementioned options
 
     Any global option can be specified as a keyword argument.
 
     The global options for a figure are:
+    (None leaves the default from the backend)
     title : str
     xlabel : str
     ylabel : str
@@ -107,15 +120,18 @@ class Plot(object):
     xscale : {'linear', 'log'}
     yscale : {'linear', 'log'}
     axis : bool
-    axis_center : tuple of two floats or {'center', 'auto'}
+    axis_center : tuple of two floats or {'center'}
     xlim : tuple of two floats
     ylim : tuple of two floats
     aspect_ratio : tuple of two floats or {'auto'}
     autoscale : bool
     margin : float in [0, 1[
 
-    The per data series options and aesthetics are:
-    There are none in the base series. See below for options for subclasses.
+    The per data series options are:
+    None in the base series. See below for options for subclasses.
+
+    The aesthetics for the data series are:
+    None in the base series. See below for options for subclasses.
 
     Some data series support additional aesthetics or options:
     is_line:
@@ -125,38 +141,79 @@ class Plot(object):
           line_color : float
         options:
           label : str
-          steps : bool
-          integers_only : bool
     is_3Dsurface:
       SurfaceOver2DRangeSeries, ParametricSurfaceSeries
         aesthetics:
           surface_color : float
+        options:
+          none
+    is_contour:
+      ContourSeries
+        aesthetics:
+          none
+        options:
+          none
+
+    Examples
+    --------
+    >>> # Creating Plot
+    >>> # Creating Plot of multiple data series
+    >>> # Setting global option (title)
+    >>> # Setting per-data series option (label)
+    >>> # Creating legend (global option)
+    >>> # Changing aesthetics (color set to a constant)
+    >>> # Changing aesthetics (color proportional to length)
+    >>> # Changing backend
+    >>> # Appending and extending plots
     """
 
     def __init__(self, *args, **kwargs):
         super(Plot, self).__init__()
 
-        #  Options for the graph as a whole.
+        #  Options for the graph as a whole. The __setattr__ method is overridden so
+        # every key from this dictionary is exposed as an attribute.
         #  The possible values for each option are described in the docstring of
         # Plot. They are based purely on convention, no checking is done.
-        self.title = None
-        self.xlabel = None
-        self.ylabel = None
-        self.aspect_ratio = 'auto'
-        self.xlim = None
-        self.ylim = None
-        self.axis_center = 'auto'
-        self.axis = True
-        self.xscale = 'linear'
-        self.yscale = 'linear'
-        self.legend = False
-        self.autoscale = True
-        self.margin = 0
+        #  The rationale for using a dictionary for the options and aesthetics
+        # here and in the Series classes is that it is easier to list them
+        # later or to loop over them (compared to class attributes).
+        _options = {
+            'title': None,
+            'xlabel': None,
+            'ylabel': None,
+            'aspect_ratio': 'auto',
+            'xlim': None,
+            'ylim': None,
+            'axis_center': (0,0),
+            'axis': True,
+            'xscale': 'linear',
+            'yscale': 'linear',
+            'legend': False,
+            'autoscale': True,
+            'margin': 0,
+        }
+        # The __setattr__ of Plot is overridden and it needs _options to be
+        # already defined. So we use the parent class __setattr__.
+        super(Plot, self).__setattr__('_options', _options)
 
         # Contains the data objects to be plotted. The backend should be smart
-        # enough to iterate over this list.
+        # enough to iterate over this list and do the appropriate actions for
+        # every subclass of BaseSeries. The iteration is done in process_series
+        # in BaseBackend and the appropriate action is done in
+        # _series_representation in the backend instance.
         self._series = []
-        self._series.extend(args)
+
+        # The arguments are either:
+        #  - arguments for the Series subclass or instances
+        # of subclasses of BaseSeries
+        #  - list of tuples containing the above
+        args = sympify(args)
+        if len(args) != 0:
+            if not all([isinstance(a, Tuple) for a in args]):
+                self._series.append(Series(*args))
+            else:
+                for a in args:
+                    self._series.append(Series(*a))
 
         # The backend type. On every show() a new backend instance is created
         # in self._backend which is tightly coupled to the Plot instance
@@ -165,21 +222,26 @@ class Plot(object):
 
         # The keyword arguments should only contain options for the plot.
         for key, val in kwargs.iteritems():
-            if hasattr(self, key):
+            if key in self._options:
                 setattr(self, key, val)
 
+    def __setattr__(self, name, val):
+        if name in self._options:
+            self._options[name] = val
+        else:
+            super(Plot, self).__setattr__(name, val)
+
+    def __getattr__(self, name):
+        if name in self._options:
+            return self._options[name]
+        else:
+            raise AttributeError('The backend has no such attribute ' + name)
+
     def show(self):
-        # TODO move this to the backend (also for save)
         if hasattr(self, '_backend'):
             self._backend.close()
         self._backend = self.backend(self)
         self._backend.show()
-
-    def save(self, path):
-        if hasattr(self, '_backend'):
-            self._backend.close()
-        self._backend = self.backend(self)
-        self._backend.save(path)
 
     def __str__(self):
         series_strs = [('[%d]: ' % i) + str(s)
@@ -190,12 +252,7 @@ class Plot(object):
         return self._series[index]
 
     def __setitem__(self, index, *args):
-        # XXX for ease of use here we permit also arguments for plot()
-        if len(args)==1 and isinstance(args[0], BaseSeries):
-            self._series[index] = args
-        else:
-            p = plot(*args, show=False)
-            self.extend(p)
+        self._series[index] = Series(*args)
 
     def __delitem__(self, index):
         del self._series[index]
@@ -207,135 +264,97 @@ class Plot(object):
         else:
             self._series.append(Series(*args))
 
-    def extend(self, arg):
-        """Adds the series from another plot or a list of series."""
-        if isinstance(arg, Plot):
-            self._series.extend(arg._series)
-        else:
-            self._series.extend(arg)
+    def extend(self, plot):
+        """Adds the series from another plot."""
+        self._series.extend(plot._series)
 
 
 def plot(*args, **kwargs):
-    """A plot function for interactive use.
+    """Convenient interface for the *new* Plot class.
 
-    It implements many heuristics in order to guess what the user wants on
-    incomplete input.
+    This function has a more relaxed input requirements than the Plot class
+    and shows the figure immediately. As such is better suited for interactive
+    work.
+
+    It returns a Plot object with a matplotlib backend.
+    For the more advanced options, detailed documentation and other types of
+    plots see the Plot class from sympy.plotting.plot.
+
+    The new Plot class is not as of yet imported by 'from sympy import *'.
+    For compability with older versions of sympy 'from sympy import *' still
+    imports the old Plot class which now resides in sympy.plotting.pygletplot.
+
+    All keyword arguments that Plot supports are also supported by plot (like
+    title, etc).
 
     There is also the 'show' argument that defaults to True (immediately
     showing the plot).
 
-    The input arguments can be:
-      - lists with coordinates for ploting a line in 2D or 3D
-      - the expressions and variable lists with ranges in order to plot any of
-        the following: 2d line, 2d parametric line, 3d parametric line,
-        surface, parametric surface
-         - if the variable lists do not provide ranges a default range is used
-         - if the variables are not provided, the free variables are
-           automatically detected
-         - if neither variables nor ranges are provided, both are guessed
-         - if multiple expressions are provided in a list all of them are
-           plotted
-      - an instance of BaseSeries() subclass
-      - another Plot() instance
-      - tuples containing any of the above mentioned options, for plotting them
-        together
-
     Examples:
     ---------
 
+    Plot lists:
+    >> listx = range(10)
+    >> listy = [x**2 for x in listx]
+    >> p0 = plot(listx, listy)
+
     Plot expressions:
-    >>> from sympy import plot, cos, sin, symbols
-    >>> x,y,u,v = symbols('x y u v')
-    >>> p1 = plot(x**2, show=False) # with default [-10,+10] range
-    >>> p2 = plot(x**2, (0, 5), show=False) # it finds the free variable itself
-    >>> p3 = plot(x**2, (x, 0, 5), show=False) # fully explicit
+    >> p1 = plot(x**2) # with default [-10,+10] range
+    >> p2 = plot(x**2, (0, 5)) # it finds the free variable itself
+    >> p3 = plot(x**2, (x, 0, 5)) # fully explicit
 
     Fully implicit examples (finding the free variable and using default
     range). For the explicit versions just add the tuples with ranges:
-    >>> p4 = plot(x**2, show=False) # cartesian line
-    >>> p5 = plot(cos(u), sin(u), show=False) # parametric line
-    >>> p6 = plot(cos(u), sin(u), u, show=False) # parametric line in 3d
-    >>> p7 = plot(x**2 + y**2, show=False) # cartesian surface
-    >>> p8 = plot(u, v, u+v, show=False) # parametric surface
+    >> p4 = plot(x**2) # cartesian line
+    >> p5 = plot(cos(u), sin(u)) # parametric line
+    >> p6 = plot(cos(u), sin(u), u) # parametric line in 3d
+    >> p7 = plot(x**2 + y**2) # cartesian surface
+    >> p8 = plot(u, v, u+v) # parametric surface
 
     Multiple plots per figure:
-    >>> p9 = plot((x**2, ), (cos(u), sin(u)), show=False) # cartesian and parametric lines
+    >> p9 = plot((x**2), (cos(u), sin(u))) # cartesian and parametric lines
 
     Set title or other options:
-    >>> p10 = plot(x**2, title='second order polynomial', show=False)
-
-    Plot a list of expressions:
-    >>> p11 = plot([x, x**2, x**3], show=False)
-    >>> p12 = plot([x, x**2, x**3], (0,2), show=False) # explicit range
-    >>> p13 = plot([x*y, -x*y], show=False) # list of surfaces
-
-    And you can even plot a Plot or a Series object:
-    >>> a = plot(x, show=False)
-    >>> p14 = plot(a, show=False) # plotting a plot object
-    >>> p15 = plot(a[0], show=False) # plotting a series object
-
+    >> p10 = plot(x**2, title='second order polynomial')
     """
+    # The idea of this function is to permint more ambiguous input than Plot
+    # and Series. It uses default values to make the input understandable for
+    # Plot. It also shows the plots immediately.
 
-    plot_arguments = [p for p in args if isinstance(p, Plot)]
-    series_arguments = [p for p in args if isinstance(p, BaseSeries)]
-    args = sympify([np for np in args if not isinstance(np, (Plot, BaseSeries))])
+    # We check if the user wants to plot one graph or multiple graps and then
+    # add the necessary ranges and free variables if they are not explicitly
+    # stated. All tuples are converted to lists for ease of work.
 
+    # The code assumes that the only use for tuples is to give the range of the
+    # plot either as (x, -4, +2) or just (-4, +2).
 
-    # Are the arguments for only one plot or are they tuples with arguments
-    # for many plots. If it is the latter make the Tuples into list so they are
-    # mutable.
-    # args = (x, (x, 10, 20)) vs args = ((x, (x, 10, 20)), (y, (y, 20, 30)))
+    args = sympify(args)
+    default_range = Tuple(-10, 10)
+
     if all([isinstance(a, Tuple) for a in args]):
         list_of_plots = map(list, args)
     else:
         list_of_plots = [list(args), ]
 
-    # Check for arguments containing lists of expressions for the same ranges.
-    # args = (x**2, (x, 10, 20)) vs args = ([x**3, x**2], (x, 10, 20))
-    list_arguments = [p for p in list_of_plots
-                              if any(isinstance(a, list) for a in p)]
-    list_of_plots = [p for p in list_of_plots
-                             if not any(isinstance(a, list) for a in p)]
+    for pl_index, pl in enumerate(list_of_plots):
+        if any([isinstance(e, Expr) for e in pl]):
+            free_vars = set.union(*[expr.free_symbols for expr in pl
+                                                if isinstance(expr, Expr)])
+            while len([t for t in pl if isinstance(t, Tuple)]) < len(free_vars):
+                pl.append(default_range)
+            for index, item in enumerate(pl):
+                if isinstance(item, Expr):
+                    pass
+                elif len(item) == 3:
+                    free_vars.discard(item[0])
+                elif len(item) == 2:
+                    pl[index] = Tuple(free_vars.pop(), item[0], item[1])
+        list_of_plots[pl_index] = Tuple(*pl)
 
-    def expand(the_args):
-        lists = [l for l in the_args if isinstance(l, list)]
-        not_lists = [l for l in the_args if not isinstance(l, list)]
-        return [list(l)+not_lists for l in zip(*lists)]
-
-    for a in list_arguments:
-        list_of_plots.extend(expand(a))
-
-    # args = (x**2, ) --> args = (x**2, (x,-10,10)) and others
-    def add_variables_and_ranges(the_args):
-        default_range = Tuple(-10, 10)
-        free_vars = set.union(*[expr.free_symbols for expr in pl
-                                                  if isinstance(expr, Expr)])
-        # remove from free_vars all variables that already have defined ranges
-        for item in the_args:
-            if isinstance(item, Tuple) and (len(item)==3 or len(item)==1):
-                free_vars.discard(item[0])
-        # add the missing variables to all len=2 Tuples
-        # add the missing ranges to all len=1 Tuples
-        for index, item in enumerate(the_args):
-            if not isinstance(item, Tuple):
-                pass
-            elif len(item) == 2:
-                the_args[index] = Tuple(free_vars.pop(), item[0], item[1])
-            elif len(item) == 1:
-                the_args[index] = Tuple(item[0], default_range[0], default_range[1])
-        # add the missing len=3 Tuples
-        the_args.extend([Tuple(v, default_range[0], default_range[1]) for v in free_vars])
-        return the_args
-
-    list_of_plots = [Tuple(*add_variables_and_ranges(pl)) for pl in list_of_plots]
-
-    series_arguments.extend([OverloadedSeriesFactory(*pl) for pl in list_of_plots])
-
-    show = kwargs.pop('show', True)
-    p = Plot(*series_arguments, **kwargs)
-    for plot_argument in plot_arguments:
-        p.extend(plot_argument)
-    if show:
+    p = Plot(*list_of_plots, **kwargs)
+    if 'show' in kwargs and kwargs['show'] == False:
+        pass
+    else:
         p.show()
     return p
 
@@ -343,7 +362,8 @@ def plot(*args, **kwargs):
 ##############################################################################
 # Data Series
 ##############################################################################
-#TODO more general way to cacollectionulate aesthetics (see get_color_array)
+#TODO nb_of_points can (should) became an option
+#TODO more general way to calculate aesthetics (see get_color_array)
 
 ### The base class for all series
 class BaseSeries(object):
@@ -370,14 +390,14 @@ class BaseSeries(object):
     #  - get_points returning 1D np.arrays list_x, list_y
     #  - get_segments returning np.array (done in Line2DBaseSeries)
     #  - get_color_array returning 1D np.array (done in Line2DBaseSeries)
-    # with the colors cacollectionulated at the points from get_points
+    # with the colors calculated at the points from get_points
 
     is_3Dline = False
     # Some of the backends expect:
     #  - get_points returning 1D np.arrays list_x, list_y, list_y
     #  - get_segments returning np.array (done in Line2DBaseSeries)
     #  - get_color_array returning 1D np.array (done in Line2DBaseSeries)
-    # with the colors cacollectionulated at the points from get_points
+    # with the colors calculated at the points from get_points
 
     is_3Dsurface = False
     # Some of the backends expect:
@@ -390,12 +410,43 @@ class BaseSeries(object):
     #   - get_points an alias for get_meshes
 
     is_parametric = False
-    # The cacollectionulation of aesthetics expects:
+    # The calculation of aesthetics expects:
     #   - get_parameter_points returning one or two np.arrays (1D or 2D)
-    # used for cacollectionulation aesthetics
+    # used for calculation aesthetics
 
     def __init__(self):
         super(BaseSeries, self).__init__()
+
+        _aesthetics = {
+        }
+
+        _options = {
+        }
+
+        super(BaseSeries, self).__setattr__('_aesthetics', _aesthetics)
+        super(BaseSeries, self).__setattr__('_options', _options)
+
+    def __setattr__(self, name, val):
+        if name in self._aesthetics:
+            self._aesthetics[name] = val
+        elif name in self._options:
+            self._options[name] = val
+        else:
+            object.__setattr__(self, name, val)
+
+    def __getattr__(self, name):
+        if name in self._options:
+            return self._options[name]
+        elif name in self._aesthetics:
+            return self._aesthetics[name]
+        else:
+            raise AttributeError('The backend has no such attribute ' + name)
+
+    def _add_aesthetics(self, additional_aes):
+        self._aesthetics.update(additional_aes)
+
+    def _add_options(self, additional_ops):
+        self._options.update(additional_ops)
 
     @property
     def is_3D(self):
@@ -418,7 +469,7 @@ class BaseSeries(object):
 class Line2DBaseSeries(BaseSeries):
     """A base class for 2D lines.
 
-    - adding the label, steps and only_integers options
+    - adding the label option
     - making is_2Dline true
     - defining get_segments and get_color_array
     """
@@ -429,30 +480,24 @@ class Line2DBaseSeries(BaseSeries):
 
     def __init__(self):
         super(Line2DBaseSeries, self).__init__()
-        self.label = None
-        self.steps = False
-        self.only_integers = False
-        self.line_color = None
+        self._add_options({'label' : None})
+        self._add_aesthetics({'line_color' : None})
 
     def get_segments(self):
         points = self.get_points()
-        if self.steps == True:
-            x = np.array((points[0],points[0])).T.flatten()[1:]
-            y = np.array((points[1],points[1])).T.flatten()[:-1]
-            points = (x, y)
         points = np.array(points).T.reshape(-1, 1, self._dim)
         return np.concatenate([points[:-1], points[1:]], axis=1)
 
     def get_color_array(self):
-        c = self.line_color
+        c = self._aesthetics['line_color']
         if hasattr(c, '__call__'):
             f = np.vectorize(c)
             arity = len(getargspec(c)[0])
             if arity == 1 and self.is_parametric:
                 x = self.get_parameter_points()
-                return f(centers_of_segments(x))
+                return f(x)
             else:
-                variables = map(centers_of_segments, self.get_points())
+                variables = self.get_points()
                 if arity == 1:
                     return f(variables[0])
                 elif arity == 2:
@@ -484,7 +529,7 @@ class LineOver1DRangeSeries(Line2DBaseSeries):
 
     def __init__(self, expr, var_start_end):
         super(LineOver1DRangeSeries, self).__init__()
-        self.nb_of_points = 300
+        self.nb_of_points = 100
         self.expr = sympify(expr)
         self.label = str(self.expr)
         self.var = sympify(var_start_end[0])
@@ -498,11 +543,7 @@ class LineOver1DRangeSeries(Line2DBaseSeries):
                 str((self.start, self.end)))
 
     def get_points(self):
-        if self.only_integers == True:
-            list_x = np.linspace(int(self.start), int(self.end),
-                    num=int(self.end)-int(self.start)+1)
-        else:
-            list_x = np.linspace(self.start, self.end, num=self.nb_of_points)
+        list_x = np.linspace(self.start, self.end, num=self.nb_of_points)
         f = vectorized_lambdify([self.var], self.expr)
         list_y = f(list_x)
         return (list_x, list_y)
@@ -516,7 +557,7 @@ class Parametric2DLineSeries(Line2DBaseSeries):
 
     def __init__(self, expr_x, expr_y, var_start_end):
         super(Parametric2DLineSeries, self).__init__()
-        self.nb_of_points = 300
+        self.nb_of_points = 100
         self.expr_x = sympify(expr_x)
         self.expr_y = sympify(expr_y)
         self.label = "(%s, %s)" % (str(self.expr_x), str(self.expr_y))
@@ -563,7 +604,7 @@ class Parametric3DLineSeries(Line3DBaseSeries):
 
     def __init__(self, expr_x, expr_y, expr_z, var_start_end):
         super(Parametric3DLineSeries, self).__init__()
-        self.nb_of_points = 300
+        self.nb_of_points = 100
         self.expr_x = sympify(expr_x)
         self.expr_y = sympify(expr_y)
         self.expr_z = sympify(expr_z)
@@ -602,26 +643,29 @@ class SurfaceBaseSeries(BaseSeries):
 
     def __init__(self):
         super(SurfaceBaseSeries, self).__init__()
-        self.surface_color = None
+        self._add_aesthetics({'surface_color' : None})
+
+        self.get_points = self.get_meshes
 
     def get_color_array(self):
-        c = self.surface_color
-        if callable(c):
+        c = self._aesthetics['surface_color']
+        if hasattr(c, '__call__'):
             f = np.vectorize(c)
             arity = len(getargspec(c)[0])
             if self.is_parametric:
-                variables = map(centers_of_faces,self.get_parameter_meshes())
+                variables = self.get_parameter_points()
+                if arity == 1:
+                    return f(variables[0])
+                else:
+                    return f(*variables)
+            else:
+                variables = self.get_points()
                 if arity == 1:
                     return f(variables[0])
                 elif arity == 2:
+                    return f(*variables[:2])
+                else:
                     return f(*variables)
-            variables = map(centers_of_faces, self.get_meshes())
-            if arity == 1:
-                return f(variables[0])
-            elif arity == 2:
-                return f(*variables[:2])
-            else:
-                return f(*variables)
         else:
             return c*np.ones(self.nb_of_points)
 
@@ -662,9 +706,6 @@ class SurfaceOver2DRangeSeries(SurfaceBaseSeries):
 class ParametricSurfaceSeries(SurfaceBaseSeries):
     """Representation for a 3D surface consisting of three parametric sympy
     expressions and a range."""
-
-    is_parametric = True
-
     def __init__(self, expr_x, expr_y, expr_z, var_start_end_u, var_start_end_v):
         super(ParametricSurfaceSeries, self).__init__()
         self.nb_of_points_u = 50
@@ -690,14 +731,11 @@ class ParametricSurfaceSeries(SurfaceBaseSeries):
                 str(self.var_v),
                 str((self.start_v, self.end_v)))
 
-    def get_parameter_meshes(self):
-        return np.meshgrid(np.linspace(self.start_u, self.end_u,
-                                       num=self.nb_of_points_u),
-                           np.linspace(self.start_v, self.end_v,
-                                       num=self.nb_of_points_v))
-
     def get_meshes(self):
-        mesh_u, mesh_v = self.get_parameter_meshes()
+        mesh_u, mesh_v = np.meshgrid(np.linspace(self.start_u, self.end_u,
+                                                 num=self.nb_of_points_u),
+                                     np.linspace(self.start_v, self.end_v,
+                                                 num=self.nb_of_points_v))
         fx = vectorized_lambdify((self.var_u, self.var_v), self.expr_x)
         fy = vectorized_lambdify((self.var_u, self.var_v), self.expr_y)
         fz = vectorized_lambdify((self.var_u, self.var_v), self.expr_z)
@@ -744,13 +782,20 @@ class ContourSeries(BaseSeries):
 
 
 ### Factory class
-class OverloadedSeriesFactory(BaseSeries):
+class Series(BaseSeries):
     """ Construct a data series representation that makes sense for the given
-    arguments. It works for a small subset of all possible plots.
+    arguments. It does not work for contour plot for the moment.
     """
     # overloading would be great here :(
     # or the new function signature stuff from PEP 362
     def __new__(cls, *args):
+        if isinstance(args[0], BaseSeries):
+            return args[0]
+        if (len(args) == 2
+            and isinstance(args[0], list)
+            and isinstance(args[1], list)):
+            return List2DSeries(*args)
+
         args = sympify(args)
         if (len(args) == 2
               and isinstance(args[0], Expr)
@@ -800,6 +845,60 @@ class BaseBackend(object):
     def __init__(self, parent):
         super(BaseBackend, self).__init__()
         self.parent = parent
+        self._dict_of_series = {} # Each backend may need to keep stuff about
+        # each data series. This dict is meant for this. It's populated using
+        # _series_representation during process_series. If a backend is not
+        # supporting certain data series _series_representation is the best
+        # place to raise an error. Another possible place is the show function.
+        # The class may create helper classes if it needs complicated
+        # representations or it can just return None if it does not need any.
+
+    def process_options(self):
+        for opt, val in self.parent._options.iteritems():
+            if val != None:
+                getattr(self, 'set_glo_'+opt)(val)
+
+    def process_series(self):
+        for s in self.parent._series:
+            if not s in self._dict_of_series:
+                self._dict_of_series[s] = self._series_representation(s)
+            for opt, val in s._options.iteritems():
+                if val != None:
+                    getattr(self, 'set_ser_opt_'+opt)(s, val)
+            for aes, val in s._aesthetics.iteritems():
+                if val != None:
+                    getattr(self, 'set_ser_aes_'+aes)(s, val)
+
+    def __getattr__(self, name):
+        if name.startswith('set_glo_'):
+            warnings.warn('The global option setter ' + name +
+                          ' is not implemented in the backend. ' +
+                          'The options is not available.')
+            return self._dummy
+        elif name.startswith('set_ser_opt_'):
+            warnings.warn('The series option setter ' + name +
+                          ' is not implemented in the backend. ' +
+                          'The options is not available.')
+            return self._dummy
+        elif name.startswith('set_ser_aes_'):
+            warnings.warn('The series aesthetic setter ' + name +
+                          ' is not implemented in the backend. ' +
+                          'The aesthetic is not available.')
+            return self._dummy
+        else:
+            raise AttributeError('The backend has no such attribute ' + name)
+
+    def _dummy(self, *args):
+        return None
+
+    def show(self):
+        pass
+
+    def close(self):
+        pass
+
+    def _series_representation(self):
+        return None
 
 
 class MatplotlibBackend(BaseBackend):
@@ -822,112 +921,133 @@ class MatplotlibBackend(BaseBackend):
         elif all(are_3D):
             self.fig = plt.figure()
             self.ax = self.fig.add_subplot(111, projection='3d')
+            #blah blah
 
-    def process_series(self):
-        parent = self.parent
-
-        for s in self.parent._series:
-            # Create the collections
-            if s.is_2Dline:
-                collection = LineCollection(s.get_segments())
-                self.ax.add_collection(collection)
-            elif s.is_contour:
-                self.ax.contour(*s.get_meshes())
-            elif s.is_3Dline:
-                # TODO too complicated, I blame matplotlib
-                collection = art3d.Line3DCollection(s.get_segments())
-                self.ax.add_collection(collection)
-                x, y, z = s.get_points()
-                self.ax.set_xlim((min(x), max(x)))
-                self.ax.set_ylim((min(y), max(y)))
-                self.ax.set_zlim((min(z), max(z)))
-            elif s.is_3Dsurface:
-                x, y, z = s.get_meshes()
-                collection = self.ax.plot_surface(x, y, z, cmap=cm.jet,
-                                                  rstride=1, cstride=1,
-                                                  linewidth = 0.1)
-            else:
-                raise ValueError('The matplotlib backend supports only '
-                                 'is_2Dline, is_3Dline, is_3Dsurface and '
-                                 'is_contour objects.')
-
-            # Customise the collections with the corresponding per-series
-            # options.
-            if hasattr(s, 'label'):
-                collection.set_label(s.label)
-            if s.is_line and s.line_color:
-                if isinstance(s.line_color, (float,int)) or callable(s.line_color):
-                    color_array = s.get_color_array()
-                    collection.set_array(color_array)
-                else:
-                    collection.set_color(s.line_color)
-            if s.is_3Dsurface and s.surface_color:
-                if matplotlib.__version__ < "1.2.0": #TODO in the distant future remove this check
-                    warn.waring('The version of matplotlib is too old to use surface coloring.')
-                elif isinstance(s.surface_color, (float,int)) or callable(s.surface_color):
-                    color_array = s.get_color_array()
-                    color_array = color_array.reshape(color_array.size)
-                    collection.set_array(color_array)
-                else:
-                    collection.set_color(s.surface_color)
-
-        # Set global options.
-        # TODO The 3D stuff
-        # XXX The order of those is important.
-        if parent.xscale and not isinstance(self.ax, Axes3D):
-            self.ax.set_xscale(parent.xscale)
-        if parent.yscale and  not isinstance(self.ax, Axes3D):
-            self.ax.set_yscale(parent.yscale)
-        if parent.xlim:
-            self.ax.set_xlim(parent.xlim)
-        if parent.ylim:
-            self.ax.set_ylim(parent.ylim)
-        self.ax.set_autoscale_on(parent.autoscale)
-        if parent.axis_center:
-            val = parent.axis_center
-            if isinstance(self.ax, Axes3D):
-                pass
-            elif val == 'center':
-                self.ax.spines['left'].set_position('center')
-                self.ax.spines['bottom'].set_position('center')
-            elif val == 'auto':
-                xl, xh = self.ax.get_xlim()
-                yl, yh = self.ax.get_ylim()
-                pos_left = ('data', 0) if xl*xh <= 0 else 'center'
-                pos_bottom = ('data', 0) if yl*yh <= 0 else 'center'
-                self.ax.spines['left'].set_position(pos_left)
-                self.ax.spines['bottom'].set_position(pos_bottom)
-            else:
-                self.ax.spines['left'].set_position(('data', val[0]))
-                self.ax.spines['bottom'].set_position(('data', val[1]))
-        if not parent.axis:
-            self.ax.set_axis_off()
-        if parent.legend:
-            self.ax.legend()
-            self.ax.legend_.set_visible(parent.legend)
-        if parent.margin:
-            self.ax.set_xmargin(parent.margin)
-            self.ax.set_ymargin(parent.margin)
-        if parent.title:
-            self.ax.set_title(parent.title)
-        if parent.xlabel:
-            self.ax.set_xlabel(parent.xlabel, position=(1,0))
-        if parent.ylabel:
-            self.ax.set_ylabel(parent.ylabel, position=(0,1))
+    def _series_representation(self, s):
+        if s.is_2Dline:
+            lc = LineCollection(s.get_segments())
+            self.ax.add_collection(lc)
+            return lc
+        elif s.is_contour:
+            return self.ax.contour(*s.get_meshes())
+        elif s.is_3Dline:
+            # TODO too complicated, I blame matplotlib
+            lc = art3d.Line3DCollection(s.get_segments())
+            self.ax.add_collection(lc)
+            x, y, z = s.get_points()
+            self.ax.set_xlim((min(x), max(x)))
+            self.ax.set_ylim((min(y), max(y)))
+            self.ax.set_zlim((min(z), max(z)))
+            return lc
+        elif s.is_3Dsurface:
+            x, y, z = s.get_meshes()
+            return self.ax.plot_surface(x, y, z, cmap=cm.jet,
+                                        rstride=1, cstride=1,
+                                        linewidth = 0.1)
+        else:
+            raise ValueError('The matplotlib backend supports only '
+                             'is_2Dline, is_3Dline and is_contour objects.')
 
     def show(self):
         self.process_series()
+        self.process_options()
         #TODO after fixing https://github.com/ipython/ipython/issues/1255
         # you can uncomment the next line and remove the pyplot.show() call
         #self.fig.show()
         plt.show()
 
-    def save(self, path):
-        self.process_series()
-        self.fig.savefig(path)
-
     def close(self):
         plt.close(self.fig)
+
+    def set_glo_title(self, val):
+        self.ax.set_title(val)
+
+    def set_glo_xlabel(self, val):
+        self.ax.set_xlabel(val, position=(1,0))
+
+    def set_glo_ylabel(self, val):
+        self.ax.set_ylabel(val, position=(0,1))
+
+    def set_glo_aspect_ratio(self, val):
+        if isinstance(val, tuple):
+            self.ax.set_aspect(float(val[1])/val[0])
+        elif val == 'auto':
+            self.ax.set_aspect('auto')
+        else:
+            raise ValueError('Bad value for the aspect arg. Use tuple or \'auto\'.')
+
+    def set_glo_xlim(self, val):
+        if val:
+            self.ax.set_xlim(val)
+
+    def set_glo_ylim(self, val):
+        if val:
+            self.ax.set_ylim(val)
+
+    def set_glo_axis_center(self, val):
+        if isinstance(self.ax, Axes3D):
+            warnings.warn('axis_center is not supported in 3D matplotlib backend.')
+        elif val == 'center':
+            self.ax.spines['left'].set_position('center')
+            self.ax.spines['bottom'].set_position('center')
+        else:
+            self.ax.spines['left'].set_position(('data', val[0]))
+            self.ax.spines['bottom'].set_position(('data', val[1]))
+
+    def set_glo_axis(self, val):
+        if val:
+            self.ax.set_axis_on()
+        else:
+            self.ax.set_axis_off()
+
+    def set_glo_xscale(self, val):
+        if isinstance(self.ax, Axes3D):
+            warnings.warn('xscale is not supported in 3D matplotlib backend.')
+        else:
+            self.ax.set_xscale(val)
+            #XXX In matplotlib xscale resets xlim, so we must set xlim again.
+            self.set_glo_xlim(self.parent.xlim)
+
+    def set_glo_yscale(self, val):
+        if isinstance(self.ax, Axes3D):
+            warnings.warn('yscale is not supported in 3D matplotlib backend.')
+        else:
+           self.ax.set_yscale(val)
+           #XXX In matplotlib yscale resets ylim, so we must set ylim again.
+           self.set_glo_ylim(self.parent.ylim)
+
+    def set_glo_legend(self, val):
+        if val:
+            self.ax.legend()
+            self.ax.legend_.set_visible(val)
+        elif hasattr(self.ax, 'ledend_'):
+            self.ax.legend_.set_visible(val)
+
+    def set_glo_autoscale(self, val):
+        self.ax.set_autoscale_on(val)
+
+    def set_glo_margin(self, val):
+        self.ax.set_xmargin(val)
+        self.ax.set_ymargin(val)
+
+    def set_ser_opt_label(self, series, val):
+        self._dict_of_series[series].set_label(val)
+
+    def set_ser_aes_line_color(self, series, val):
+        if isinstance(val, (float,int)) or callable(val):
+            color_array = series.get_color_array()
+            self._dict_of_series[series].set_array(color_array[:-1])
+        else:
+            self._dict_of_series[series].set_color(val)
+
+    def set_ser_aes_surface_color(self, series, val):
+        if isinstance(val, (float,int)) or callable(val):
+            color_array = np.array(series.get_color_array()[:-1,:-1])
+            color_array.shape = color_array.shape[0] * color_array.shape[1]
+            self._dict_of_series[series].set_array(color_array)
+        else:
+            self._dict_of_series[series].set_color(val)
+
 
 
 class TextBackend(BaseBackend):
@@ -943,9 +1063,6 @@ class TextBackend(BaseBackend):
             ser = self.parent._series[0]
             textplot(ser.expr, ser.start, ser.end)
 
-    def close(self):
-        pass
-
 
 class DefaultBackend(BaseBackend):
     def __new__(cls, parent):
@@ -960,17 +1077,12 @@ plot_backends = {
         'text' : TextBackend,
         }
 
-
 ##############################################################################
-# Finding the centers of line segments or mesh faces
+# A helper for making vectorized functions
 ##############################################################################
+# There are so many levels of evalf, ufunc and vectorize
+# here that this is most probably hundred times slower
+# than The Right Solution TM.
 
-def centers_of_segments(array):
-    return np.average(np.vstack((array[:-1], array[1:])), 0)
-
-def centers_of_faces(array):
-    return np.average(np.dstack((array[:-1, :-1],
-                                 array[1: , :-1],
-                                 array[:-1, 1: ],
-                                 array[:-1, :-1],
-                                 )), 2)
+def vectorized_lambdify(args, expr):
+    return np.vectorize(experimental_lambdify(args, expr))
