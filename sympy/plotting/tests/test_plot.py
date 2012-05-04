@@ -1,7 +1,5 @@
-from sympy import (plot, pi, sin, cos, Symbol, Integral, summation, sqrt, log,
-oo, LambertW, I)
+from sympy import plot, pi, sin, cos, Symbol, Integral, summation, sqrt, log, oo
 from tempfile import NamedTemporaryFile
-import warnings
 
 def tmp_file(name=''):
     return NamedTemporaryFile(suffix='.png').name
@@ -125,35 +123,6 @@ def plot_and_save(name):
     p[0].steps = True
     p.save(tmp_file('%s_advanced_fin_sum.png' % name))
 
-
-    ###
-    # Test expressions that can not be translated to np and generate complex
-    # results.
-    ###
-
-
-    #with warnings.catch_warnings(record=True) as w:
-    #    warnings.simplefilter("always")
-    #    plot(sqrt(sqrt(-x)), show=False).save(tmp_file())
-    #    assert len(w) == 1
-    #    assert "Complex values as arguments to numpy functions encountered." == str(w[-1].message)
-    #with warnings.catch_warnings(record=True) as w:
-    #    warnings.simplefilter("always")
-    #    plot(LambertW(x), show=False).save(tmp_file())
-    #    assert len(w) > 10 #TODO trace where do the other warnings come from
-    #    assert "Complex values as arguments to python math functions encountered." == str(w[-1].message)
-    #with warnings.catch_warnings(record=True) as w:
-    #    warnings.simplefilter("always")
-    #    plot(sqrt(LambertW(x)), show=False).save(tmp_file())
-    #    assert len(w) == 1
-    #    assert "Complex values as arguments to python math functions encountered." == str(w[-1].message)
-    #TODO these test do not work properly.
-    plot(sin(x)+I*cos(x)).save(tmp_file())
-    plot(sqrt(sqrt(-x)), show=False).save(tmp_file())
-    plot(LambertW(x), show=False).save(tmp_file())
-    plot(sqrt(LambertW(x)), show=False).save(tmp_file())
-
-
     ###
     # Test all valid input args for plot()
     ###
@@ -190,7 +159,6 @@ def plot_and_save(name):
 def test_matplotlib():
     try:
         import matplotlib
-        import numpy
         if matplotlib.__version__ < '1.2.0':
             return
         plot_and_save('test')
