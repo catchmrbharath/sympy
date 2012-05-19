@@ -189,6 +189,7 @@ def str2tree(exprstr):
     >>> str2tree(str(x+y*sin(z)+1))
     ('x + y*', ('sin(', 'z'), ') + 1')
     """
+<<<<<<< HEAD
     #matches the first 'function_name('
     first_par = re.match(r'[^\(]*?[\W]?(\w+\()', exprstr)
     if first_par is None:
@@ -276,6 +277,124 @@ def sympy_expression_namespace(expr):
         return {}
     else:
         funcname = str(expr.func)
+=======
+    def __init__(self, args, expr, tol = 1e-15):
+        self.args = args
+        self.expr = expr
+        self.lambda_func = experimental_lambdify(args, expr, use_np=True)
+        self.vector_func = self.lambda_func
+        self.failure = False
+        self.tol = tol
+
+    def __call__(self, *args):
+        # TODO: This can be simplified. Check the last failback.
+        np_old_err = np.seterr(invalid='raise')
+        try:
+            results = self.vector_func(*args)
+            #results can have complex values without causing an exception.
+            if results.dtype == 'complex':
+                results = np.array([ a.real if np.abs(a.imag) < self.tol else None for a in results])
+        except Exception, e:
+            np.seterr(**np_old_err)
+            #DEBUG: print 'Error', type(e), e
+            if (isinstance(e, FloatingPointError)
+                and 'invalid value encountered in' in str(e)):
+                # All functions were translated to numpy but
+                # complex number were produced and returned as nan.
+                # Solution: demand the use of np.complex128.
+                # Discard values which have imag part > tol
+                args = (np.array(a, dtype=np.complex) for a in args)
+                results = self.vector_func(*args)
+                results = np.array([ a.real if np.abs(a.imag) < self.tol else None for a in results])
+                warnings.warn('Complex values encountered. Discarding Complex values for plot')
+            elif ((isinstance(e, TypeError )
+                   and 'unhashable type: \'numpy.ndarray\'' in str(e))
+                  or
+                  (isinstance(e, ValueError)
+                   and ('Invalid limits given:' in str(e)
+                        or 'negative dimensions are not allowed' in str(e) #XXX
+                        or 'sequence too large; must be smaller than 32' in str(e)))): #XXX
+                # Almost all functions were translated to numpy, but some were
+                # left as sympy functions. They recieved an ndarray as an
+                # argument and failed.
+                #   sin(ndarray(...)) raises "unhashable type"
+                #   Integral(x, (x, 0, ndarray(...))) raises "Invalid limits"
+                #   other ugly exceptions that are not well understood (marked with XXX)
+                # Solution: use math and vectorize the final lambda.
+                self.lambda_func = experimental_lambdify(self.args, self.expr, use_python_math=True)
+                self.vector_func = np.vectorize(self.lambda_func, otypes=[np.float])
+                results = self.__call__(*args)
+            elif (isinstance(e, ValueError)
+                  and
+                  ('Symbolic value, can\'t compute' in str(e) or 'math domain error' in str(e))):
+                # Almost all functions were translated to python math, but some
+                # were left as sympy functions. They produced complex numbers.
+                #   float(a+I*b) raises "Symbolic value, can't compute"
+                #   math.sqrt(-1) raises "math domain error"
+                # Solution: use cmath and vectorize the final lambda.
+                self.lambda_func = experimental_lambdify(self.args, self.expr, use_python_cmath=True)
+                self.vector_func = np.vectorize(self.lambda_func, otypes=[np.complex])
+                results = self.__call__(*args)
+                results = np.array([ a.real if np.abs(a.imag) < self.tol else None for a in results])
+                warnings.warn('Complex values encountered. Discarding complex values for plot')
+            else:
+                # Complete failure. One last try with no translations, only
+                # wrapping in complex((...).evalf()) and returning the real
+                # part.
+                if self.failure:
+                    raise e
+                else:
+                    self.failure = True
+                    self.lambda_func = experimental_lambdify(self.args, self.expr,
+                                                        use_evalf=True,
+                                                        complex_wrap_evalf=True)
+                    self.vector_func = np.vectorize(self.lambda_func, otypes=[np.complex])
+                    results = np.real(self.__call__(*args))
+                    warnings.warn('The evaluation of the expression is'
+                            ' problematic. We are trying a failback method'
+                            ' that may still work. Please report this as a bug.')
+        return results
+
+
+def experimental_lambdify(*args, **kwargs):
+    l = Lambdifier(*args, **kwargs)
+    return l.lambda_func
+
+
+class Lambdifier(object):
+    def __init__(self, args, expr, print_lambda=False,
+                                   use_evalf=False,
+                                   float_wrap_evalf=False,
+                                   complex_wrap_evalf=False,
+                                   use_np=False,
+                                   use_python_math=False,
+                                   use_python_cmath=False):
+
+        self.print_lambda = print_lambda
+        self.use_evalf = use_evalf
+        self.float_wrap_evalf = float_wrap_evalf
+        self.complex_wrap_evalf = complex_wrap_evalf
+        self.use_np = use_np
+        self.use_python_math = use_python_math
+        self.use_python_cmath = use_python_cmath
+
+        # Constructing the argument string
+        if not all([isinstance(a, Symbol) for a in args]):
+            raise ValueError('The arguments must be Symbols.')
+        else:
+            argstr = ', '.join([str(a) for a in args])
+
+        # Constructing the translation dictionaries and making the translation
+        self.dict_str = self.get_dict_str()
+        self.dict_fun = self.get_dict_fun()
+        exprstr = str(expr)
+        newexpr = self.tree2str_translate(self.str2tree(exprstr))
+
+        # Constructing the namespaces
+        namespace = {}
+        namespace.update(self.sympy_atoms_namespace(expr))
+        namespace.update(self.sympy_expression_namespace(expr))
+>>>>>>> complex values are discarded in plot
         # XXX Workaround
         # Here we add an ugly workaround because str(func(x))
         # is not always the same as str(func). Eg
