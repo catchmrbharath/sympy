@@ -104,18 +104,22 @@ class vectorized_lambdify(object):
     Check numpy bug http://projects.scipy.org/numpy/ticket/1013 to know what
     types of errors to expect.
     """
-    def __init__(self, args, expr):
+    def __init__(self, args, expr, tol = 1e-15):
         self.args = args
         self.expr = expr
         self.lambda_func = experimental_lambdify(args, expr, use_np=True)
         self.vector_func = self.lambda_func
         self.failure = False
+        self.tol = tol
 
     def __call__(self, *args):
         # TODO: This can be simplified. Check the last failback.
         np_old_err = np.seterr(invalid='raise')
         try:
             results = self.vector_func(*args)
+            #results can have complex values without causing an exception.
+            if results.dtype == 'complex':
+                results = np.array([ a.real if np.abs(a.imag) < self.tol else None for a in results])
         except Exception, e:
             np.seterr(**np_old_err)
             #DEBUG: print 'Error', type(e), e
@@ -124,10 +128,12 @@ class vectorized_lambdify(object):
                 # All functions were translated to numpy but
                 # complex number were produced and returned as nan.
                 # Solution: demand the use of np.complex128.
+                # Discard values which have imag part > tol
                 args = (np.array(a, dtype=np.complex) for a in args)
-                results = np.real(self.vector_func(*args))
-                warnings.warn('Complex values encountered. Returning only the real part.')
-            elif ((isinstance(e, TypeError)
+                results = self.vector_func(*args)
+                results = np.array([ a.real if np.abs(a.imag) < self.tol else None for a in results])
+                warnings.warn('Complex values encountered. Discarding Complex values for plot')
+            elif ((isinstance(e, TypeError )
                    and 'unhashable type: \'numpy.ndarray\'' in str(e))
                   or
                   (isinstance(e, ValueError)
@@ -154,8 +160,9 @@ class vectorized_lambdify(object):
                 # Solution: use cmath and vectorize the final lambda.
                 self.lambda_func = experimental_lambdify(self.args, self.expr, use_python_cmath=True)
                 self.vector_func = np.vectorize(self.lambda_func, otypes=[np.complex])
-                results = np.real(self.__call__(*args))
-                warnings.warn('Complex values encountered. Returning only the real part.')
+                results = self.__call__(*args)
+                results = np.array([ a.real if np.abs(a.imag) < self.tol else None for a in results])
+                warnings.warn('Complex values encountered. Discarding complex values for plot')
             else:
                 # Complete failure. One last try with no translations, only
                 # wrapping in complex((...).evalf()) and returning the real
