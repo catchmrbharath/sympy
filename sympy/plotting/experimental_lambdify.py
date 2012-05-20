@@ -116,6 +116,10 @@ class vectorized_lambdify(object):
         np_old_err = np.seterr(invalid='raise')
         try:
             results = self.vector_func(*args)
+            #results can have complex values without causing an exception.
+            if results.dtype == 'complex':
+                result_temp = np.ma.array(results, dtype = 'float')
+                results = np.ma.masked_where(np.abs(results.imag) > 0, result_temp)
         except Exception, e:
             np.seterr(**np_old_err)
             #DEBUG: print 'Error', type(e), e
@@ -125,8 +129,10 @@ class vectorized_lambdify(object):
                 # complex number were produced and returned as nan.
                 # Solution: demand the use of np.complex128.
                 args = (np.array(a, dtype=np.complex) for a in args)
-                results = np.real(self.vector_func(*args))
-                warnings.warn('Complex values encountered. Returning only the real part.')
+                results = self.vector_func(*args)
+                result_temp = np.ma.array(results, dtype = 'float')
+                results = np.ma.masked_where(np.abs(results.imag) > 0, result_temp)
+                warnings.warn('Complex values encountered. Discarding Complex values for plot')
             elif ((isinstance(e, TypeError)
                    and 'unhashable type: \'numpy.ndarray\'' in str(e))
                   or
@@ -154,8 +160,10 @@ class vectorized_lambdify(object):
                 # Solution: use cmath and vectorize the final lambda.
                 self.lambda_func = experimental_lambdify(self.args, self.expr, use_python_cmath=True)
                 self.vector_func = np.vectorize(self.lambda_func, otypes=[np.complex])
-                results = np.real(self.__call__(*args))
-                warnings.warn('Complex values encountered. Returning only the real part.')
+                results = self.__call__(*args)
+                result_temp = np.ma.array(results, dtype = 'float')
+                results = np.ma.masked_where(np.abs(results.imag) > 0, result_temp)
+                warnings.warn('Complex values encountered. Discarding complex values for plot')
             else:
                 # Complete failure. One last try with no translations, only
                 # wrapping in complex((...).evalf()) and returning the real
@@ -168,7 +176,8 @@ class vectorized_lambdify(object):
                                                         use_evalf=True,
                                                         complex_wrap_evalf=True)
                     self.vector_func = np.vectorize(self.lambda_func, otypes=[np.complex])
-                    results = np.real(self.__call__(*args))
+                    result_temp = np.ma.array(results, dtype = 'float')
+                    results = np.ma.masked_where(np.abs(results.imag) > 0, result_temp)
                     warnings.warn('The evaluation of the expression is'
                             ' problematic. We are trying a failback method'
                             ' that may still work. Please report this as a bug.')
