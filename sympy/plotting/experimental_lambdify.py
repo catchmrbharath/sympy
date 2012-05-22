@@ -176,6 +176,7 @@ class vectorized_lambdify(object):
                                                         use_evalf=True,
                                                         complex_wrap_evalf=True)
                     self.vector_func = np.vectorize(self.lambda_func, otypes=[np.complex])
+                    results = self.__call__(*args)
                     result_temp = np.ma.array(results, dtype = 'float')
                     results = np.ma.masked_where(np.abs(results.imag) > 0, result_temp)
                     warnings.warn('The evaluation of the expression is'
