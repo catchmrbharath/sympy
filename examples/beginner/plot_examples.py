@@ -48,5 +48,3 @@ param_line_3d[2].line_color = lambda u, v, w : u*v*w # all coordinates
 if __name__ == '__main__':
     for p in [a,b,c,e,f,g,h, param_line_2d, param_line_3d]:
         p.show()
-
-
