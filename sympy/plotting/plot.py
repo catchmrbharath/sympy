@@ -497,7 +497,7 @@ class LineOver1DRangeSeries(Line2DBaseSeries):
                 str(self.var),
                 str((self.start, self.end)))
 
-    def get_points(self): 
+    def get_points(self):
         if self.only_integers == True:
             list_x = np.linspace(int(self.start), int(self.end),
                     num=int(self.end)-int(self.start)+1)
@@ -519,8 +519,8 @@ class LineOver1DRangeSeries(Line2DBaseSeries):
                         listx_temp.append(list_x[j + 1])
                     else:
                         #Select a point between the x values.
-                        random = 0.45 + np.random.rand()*0.1
-                        xnew = list_x[j] + random* ( list_x[j + 1] - list_x[j]) 
+                        random = 0.45 + np.random.rand() * 0.1
+                        xnew = list_x[j] + random * (list_x[j + 1] - list_x[j])
                         listx_temp.append(xnew)
                         listx_temp.append(list_x[j + 1])
 
@@ -530,15 +530,14 @@ class LineOver1DRangeSeries(Line2DBaseSeries):
                         if flat(xpts, ypts):
                             listx_temp.append(list_x[len(list_x) - 1])
                         else:
-                            random = 0.45 + np.random.rand()*0.1
-                            xnew = list_x[j + 1] + random* ( list_x[j + 2] - list_x[j + 1]) 
+                            random = 0.45 + np.random.rand() * 0.1
+                            xnew = list_x[j + 1] + random * ( list_x[j + 2] - list_x[j + 1])
                             listx_temp.append(xnew)
                             listx_temp.append(list_x[len(list_x) - 1])
                     j +=1
 
                 list_x = np.array(listx_temp)
                 list_y = f(list_x) #TODO Points are evaluated in every loop. Can be avoided.
-        print len(list_x)
         return (list_x, list_y)
 
 
@@ -1024,5 +1023,5 @@ def flat(x, y):
     cos_theta = dot_product / (abs_a * abs_b)
     if abs(cos_theta + 1) > 0.001:
         return False
-    else: 
+    else:
         return True
