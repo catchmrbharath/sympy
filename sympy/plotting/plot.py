@@ -497,14 +497,48 @@ class LineOver1DRangeSeries(Line2DBaseSeries):
                 str(self.var),
                 str((self.start, self.end)))
 
-    def get_points(self):
+    def get_points(self): 
         if self.only_integers == True:
             list_x = np.linspace(int(self.start), int(self.end),
                     num=int(self.end)-int(self.start)+1)
+            f = vectorized_lambdify([self.var], self.expr)
+            list_y = f(list_x)
         else:
-            list_x = np.linspace(self.start, self.end, num=self.nb_of_points)
-        f = vectorized_lambdify([self.var], self.expr)
-        list_y = f(list_x)
+            list_x = np.linspace(self.start, self.end, num= 64)
+            f = vectorized_lambdify([self.var], self.expr)
+            list_y = f(list_x)
+            for i in range(8):
+                listx_temp = []
+                listx_temp.append(list_x[0])
+                j = 0
+                while j < len(list_x) - 2:
+                    xpts = [list_x[j], list_x[j + 1], list_x[j + 2]]
+                    ypts = [list_y[j], list_y[j + 1], list_y[j + 2]]
+                    # Check whether the points form an angle if 180 +- eps.
+                    if flat(xpts, ypts):
+                        listx_temp.append(list_x[j + 1])
+                    else:
+                        #Select a point between the x values.
+                        random = 0.45 + np.random.rand()*0.1
+                        xnew = list_x[j] + random* ( list_x[j + 1] - list_x[j]) 
+                        listx_temp.append(xnew)
+                        listx_temp.append(list_x[j + 1])
+
+                    if j == len(list_x) - 3:
+                        #If the last three points are not flat, add a point between
+                        #the last two points.
+                        if flat(xpts, ypts):
+                            listx_temp.append(list_x[len(list_x) - 1])
+                        else:
+                            random = 0.45 + np.random.rand()*0.1
+                            xnew = list_x[j + 1] + random* ( list_x[j + 2] - list_x[j + 1]) 
+                            listx_temp.append(xnew)
+                            listx_temp.append(list_x[len(list_x) - 1])
+                    j +=1
+
+                list_x = np.array(listx_temp)
+                list_y = f(list_x) #TODO Points are evaluated in every loop. Can be avoided.
+        print len(list_x)
         return (list_x, list_y)
 
 
@@ -974,3 +1008,21 @@ def centers_of_faces(array):
                                  array[:-1, 1: ],
                                  array[:-1, :-1],
                                  )), 2)
+
+#############################################################################
+#Find whether three points are almost straight in order.
+#############################################################################
+
+def flat(x, y):
+    axbar = x[2] - x[1]
+    aybar = y[2] - y[1]
+    bxbar = x[0] - x[1]
+    bybar = y[0] - y[1]
+    dot_product = (axbar*bxbar + aybar * bybar)
+    abs_a = np.sqrt(axbar*axbar + aybar*aybar)
+    abs_b = np.sqrt(bxbar*bxbar + bybar * bybar)
+    cos_theta = dot_product / (abs_a * abs_b)
+    if abs(cos_theta + 1) > 0.001:
+        return False
+    else: 
+        return True
