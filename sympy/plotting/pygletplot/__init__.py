@@ -128,4 +128,3 @@ try:
 except Exception, e:
     def PygletPlot(*args, **kwargs):
         raise e
-
