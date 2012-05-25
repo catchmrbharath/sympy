@@ -497,6 +497,35 @@ class LineOver1DRangeSeries(Line2DBaseSeries):
                 str(self.var),
                 str((self.start, self.end)))
 
+    def get_segments(self):
+        f = vectorized_lambdify([self.var], self.expr)
+        list_segments = []
+        def sample(p, q, depth):
+            #Choose a random point in the middle to avoid problems
+            #due to aliasing.
+            random = 0.45 + np.random.rand() * 0.1
+            xnew = p[0] + random * (q[0] - p[0])
+            ynew = f(np.ma.array([xnew]))
+            ymask = ynew.mask
+            #If depth is less than 6, sample irrespective whether the line
+            #is flat or not. This is done to avoid aliasing.
+            #Ideally depth of 20 is never reached. Floating point errors
+            #make sure that the line is flat before depth reaches 20.
+            if depth > 10:
+                list_segments.append([p, q])
+
+            elif depth > 6 and not ymask and (flat([p[0], xnew, q[0]], [p[1], ynew[0], q[1]])): 
+                list_segments.append([p, q])
+            else:
+                sample(p, [xnew, ynew], depth + 1)
+                sample([xnew, ynew], q, depth + 1)
+        #Ugly, but vectorized_lambdify fails to work with points
+        f_start = f(np.array([self.start]))[0]
+        f_end = f(np.array([self.end]))[0]
+        sample([self.start, f_start], [self.end, f_end], 0)
+        print len(list_segments)
+        return list_segments
+
     def get_points(self):
         if self.only_integers == True:
             list_x = np.linspace(int(self.start), int(self.end),
