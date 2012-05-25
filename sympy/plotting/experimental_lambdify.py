@@ -149,7 +149,7 @@ class vectorized_lambdify(object):
                 # Solution: use math and vectorize the final lambda.
                 self.lambda_func = experimental_lambdify(self.args, self.expr, use_python_math=True)
                 self.vector_func = np.vectorize(self.lambda_func, otypes=[np.float])
-                results = self.__call__(*args)
+                results = np.ma.array(self.__call__(*args))
             elif (isinstance(e, ValueError)
                   and
                   ('Symbolic value, can\'t compute' in str(e) or 'math domain error' in str(e))):
