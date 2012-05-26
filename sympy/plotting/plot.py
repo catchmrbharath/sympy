@@ -1003,3 +1003,18 @@ def centers_of_faces(array):
                                  array[:-1, 1: ],
                                  array[:-1, :-1],
                                  )), 2)
+
+def flat(x, y):
+    "detemines whether three points are almost flat or not"
+    axbar = x[2] - x[1]
+    aybar = y[2] - y[1]
+    bxbar = x[0] - x[1]
+    bybar = y[0] - y[1]
+    dot_product = (axbar*bxbar + aybar * bybar)
+    abs_a = np.sqrt(axbar*axbar + aybar*aybar)
+    abs_b = np.sqrt(bxbar*bxbar + bybar * bybar)
+    cos_theta = dot_product / (abs_a * abs_b)
+    if abs(cos_theta + 1) > 0.001:
+        return False
+    else:
+        return True
