@@ -434,8 +434,7 @@ class Line2DBaseSeries(BaseSeries):
         self.only_integers = False
         self.line_color = None
 
-    def get_segments(self):
-        points = self.get_points()
+    def get_segments(self, points):
         if self.steps == True:
             x = np.array((points[0],points[0])).T.flatten()[1:]
             y = np.array((points[1],points[1])).T.flatten()[:-1]
@@ -497,32 +496,31 @@ class LineOver1DRangeSeries(Line2DBaseSeries):
                 str(self.var),
                 str((self.start, self.end)))
 
-    def get_segments(self):
+    def get_adapt_segments(self):
         f = vectorized_lambdify([self.var], self.expr)
         list_segments = []
-        def sample(p, q, depth):
-            #Choose a random point in the middle to avoid problems
-            #due to aliasing.
-            random = 0.45 + np.random.rand() * 0.1
-            xnew = p[0] + random * (q[0] - p[0])
-            ynew = f(np.ma.array([xnew]))
-            ymask = ynew.mask
-            #If depth is less than 6, sample irrespective whether the line
-            #is flat or not. This is done to avoid aliasing.
-            #Ideally depth of 20 is never reached. Floating point errors
-            #make sure that the line is flat before depth reaches 20.
-            if depth > 10:
-                list_segments.append([p, q])
-
-            elif depth > 6 and not ymask and (flat([p[0], xnew, q[0]], [p[1], ynew[0], q[1]])): 
-                list_segments.append([p, q])
+        def sample(segmentA, depth):
+            if depth > 5:
+                list_segments.append(segmentA)
             else:
-                sample(p, [xnew, ynew], depth + 1)
-                sample([xnew, ynew], q, depth + 1)
-        #Ugly, but vectorized_lambdify fails to work with points
-        f_start = f(np.array([self.start]))[0]
-        f_end = f(np.array([self.end]))[0]
-        sample([self.start, f_start], [self.end, f_end], 0)
+                new_sampling = np.linspace(segmentA[0, 0], segmentA[1, 0], 5)
+                new_segments = self.get_segments((new_sampling, f(new_sampling)))
+                for segmentA, segmentB in zip(new_segments[:-1], new_segments[1:]):
+                    if not flat(segmentA, segmentB):
+                        sample(segmentA, depth + 1)
+                    else:
+                        list_segments.append(segmentA)
+                if not flat(new_segments[-2], new_segments[-1]):
+                    sample(new_segments[-1], depth + 1)
+                else:
+                    list_segments.append(new_segments[-1])
+
+
+        points = np.linspace(self.start, self.end, 17)
+        yvalues = f(points)
+        segments = self.get_segments((points, yvalues))
+        for segmentA in segments:
+            sample(segmentA, 0)
         print len(list_segments)
         return list_segments
 
@@ -858,7 +856,7 @@ class MatplotlibBackend(BaseBackend):
         for s in self.parent._series:
             # Create the collections
             if s.is_2Dline:
-                collection = LineCollection(s.get_segments())
+                collection = LineCollection(s.get_adapt_segments())
                 self.ax.add_collection(collection)
             elif s.is_contour:
                 self.ax.contour(*s.get_meshes())
@@ -1003,3 +1001,13 @@ def centers_of_faces(array):
                                  array[:-1, 1: ],
                                  array[:-1, :-1],
                                  )), 2)
+
+def flat(segmentA, segmentB):
+    vectorA = segmentA[0] - segmentA[1]
+    vectorB = segmentB[1] - segmentB[0]
+    costheta = np.dot(vectorA, vectorB) / (np.linalg.norm(vectorA) * np.linalg.norm(vectorB))
+
+    if abs(costheta + 1) < 0.0005:
+        return True
+    else:
+        return False
