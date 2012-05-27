@@ -497,6 +497,44 @@ class LineOver1DRangeSeries(Line2DBaseSeries):
                 str(self.var),
                 str((self.start, self.end)))
 
+    def get_segments(self):
+        f = vectorized_lambdify([self.var], self.expr)
+        list_segments = []
+        def sample(p, q, depth):
+            #Choose a random point in the middle to avoid problems
+            #due to aliasing.
+            random = 0.45 + np.random.rand() * 0.1
+            xnew = p[0] + random * (q[0] - p[0])
+            ynew = f(np.array([xnew]))[0]
+            new_point = np.array([xnew, ynew])
+            #If depth is less than 6, sample irrespective whether the line
+            #is flat or not. This is done to avoid aliasing.
+            #A depth of 20 adds a max of 20 points wherever is required
+            if depth > 20:
+                list_segments.append([p, q])
+            #If both the end points have complex values, sample 10 points
+            #and see whether one of them is real. If there is a real value,
+            #sample further near to it. 
+            elif depth > 6 and not p[1] and not q[1]:
+                xarray = np.linspace(p[0], q[0], 10)
+                yarray = f(xarray)
+                if any(x for x in yarray):
+                    for i in range(len(yarray) - 1):
+                        if yarray[i] or yarray[i + 1]:
+                            sample([xarray[i], yarray[i]], [xarray[i + 1], yarray[i + 1]])
+
+            elif depth < 6 or not p[1] or not q[1] or not \
+                    flat(p, new_point, q):
+                sample(p, new_point, depth + 1)
+                sample(new_point, q, depth + 1)
+            else:
+                list_segments.append([p, q])
+        #Ugly, but vectorized_lambdify fails to work with single points
+        f_start = f(np.array([self.start]))[0]
+        f_end = f(np.array([self.end]))[0]
+        sample([self.start, f_start], [self.end, f_end], 0)
+        return list_segments
+
     def get_points(self):
         if self.only_integers == True:
             list_x = np.linspace(int(self.start), int(self.end),
@@ -974,3 +1012,13 @@ def centers_of_faces(array):
                                  array[:-1, 1: ],
                                  array[:-1, :-1],
                                  )), 2)
+
+#returns whetether three points form almost a straight line or not
+def flat(x, y, z):
+    vectorA = x - y
+    vectorB = z - y
+    cos_theta = np.dot(vectorA, vectorB)/(np.linalg.norm(vectorA) * np.linalg.norm(vectorB))
+    if abs(cos_theta + 1) > 0.001:
+        return False
+    else:
+        return True
