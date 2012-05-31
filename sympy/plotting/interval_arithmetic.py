@@ -36,8 +36,9 @@ import warnings
 #problems as that of floating point arithmetic. Plotting based on 
 #mpmath will also implemented for plots that would require high 
 #precision. 
+
 class interval(object):
-    "Represents an interval containing floating point as start and 
+    """ Represents an interval containing floating point as start and 
     end of the interval. The comparision of two intervals is done through
     a three - valued logic, True, False, and None."""
     
@@ -69,6 +70,10 @@ class interval(object):
     @property
     def mid(self):
         return (self.start + self.end) / 2.0
+
+    @property
+    def width(self):
+        return self.end - self.start
 
     def __repr__(self):
         return "interval(%f, %f)" % (self.start, self.end)
@@ -269,8 +274,11 @@ class interval(object):
         return self.start <= t.start and t.end <= self.end
 
     def __rdiv__(s, t):
-        t = interval(t)
-        return t.__div__(s)
+        if isinstance(t, (interval, int, float)):
+            t = interval(t)
+            return t.__div__(s)
+        else:
+            NotImplemented
 
     def __div__(s, t):
         t = interval(t)
@@ -340,6 +348,14 @@ class interval(object):
                 if np.isnan(end):
                     end = np.inf
                 return interval(start, end)
+
+    def __pow__(s, t):
+        if isinstance(t, interval):
+            return NotImplemented
+        elif isinstance(t, (float, int)):
+            if t == int(t):
+                return interval(s.start**t, s.end ** t)
+
 
 
 
@@ -499,10 +515,12 @@ def test_interval_div():
     assert interval(0.5, 4) / interval(-2, -0.5) == interval(-8.0, -0.25)
     assert interval(-1, -0.5) / interval(-2, -0.5) == interval(0.25, 2.0)
     assert interval(-4, -0.5) / interval(-2, -0.5) == interval(0.25, 8.0)
-    # Should be undefined?
     assert interval(0, 0) / interval(0, 0) == interval(-np.inf, np.inf)
     assert interval(0, 0) / interval(0, 1) == interval(-np.inf, np.inf)
-    
+    assert 1 / interval(2, 4) == interval(0.25, 0.5)
+
+def test_pow():
+    assert interval(2, 4) ** 2 == interval(4, 16)
 
 
 if __name__=='__main__':
@@ -512,4 +530,5 @@ if __name__=='__main__':
     test_interval_sub()
     test_interval_mul()
     test_interval_div()
+    test_pow()
 
