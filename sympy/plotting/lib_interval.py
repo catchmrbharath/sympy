@@ -37,19 +37,19 @@ def interval_atan(x):
 #periodic
 def interval_sin(x):
     x = interval(x)
+    if not (np.isfinite(x.start) and np.isfinite(x.end)):
+        return interval(-1, 1)
     na, a = divmod(x.start, np.pi / 2.0)
     nb, b = divmod(x.end, np.pi / 2.0)
-    if x.start < 0:
-        na = -1 - na
-    if x.end < 0:
-        nb = -1 - nb
     start = min(np.sin(x.start), np.sin(x.end))
     end = max(np.sin(x.start), np.sin(x.end))
+#    print na, nb
     if nb - na > 4:
         return interval(-1, 1)
     elif na == nb:
         return interval(start, end)
     else:
+        #print na, nb
         if (na - 1) // 4 != (nb - 1) // 4:
             #sin has max
             end = 1
@@ -61,6 +61,8 @@ def interval_sin(x):
 #periodic
 def interval_cos(x):
     x = interval(x)
+    if not (np.isfinite(x.start) and np.isfinite(x.end)):
+        return interval(-1, 1)
     na, a = divmod(x.start, np.pi / 2.0)
     nb, b = divmod(x.end, np.pi / 2.0)
     if x.start < 0:
@@ -79,7 +81,7 @@ def interval_cos(x):
         if (na) // 4 != (nb) // 4:
             #cos has max
             end = 1
-        if (na - 2) // 2 != (nb - 2) // 4:
+        if (na - 2) // 4 != (nb - 2) // 4:
             #cos has min
             start = -1
         return interval(start, end)
