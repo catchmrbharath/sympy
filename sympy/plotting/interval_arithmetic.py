@@ -79,7 +79,7 @@ class interval(object):
         return "interval(%f, %f)" % (self.start, self.end)
 
     def __str__(self):
-        return "interval(%f, %f)" % (self.start, self.end)
+        return "[%f, %f]" % (self.start, self.end)
 
     def __lt__(s, t):
         if isinstance(t, (interval, int, float)):
@@ -279,6 +279,14 @@ class interval(object):
             return t.__div__(s)
         else:
             NotImplemented
+
+    def __truediv__(s, t):
+        return s.__div__(t)
+
+    def __rtruediv__(s, t):
+        t = interval(t)
+        return t.__div__(s)
+
 
     def __div__(s, t):
         t = interval(t)
