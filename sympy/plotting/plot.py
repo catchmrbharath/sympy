@@ -31,7 +31,7 @@ from sympy.core.compatibility import reduce
 from experimental_lambdify import vectorized_lambdify, experimental_lambdify
 from sympy.core.relational import Equality
 import fractions
-from interval_arithmetic import interval
+from intervalmath import interval
 
 #TODO probably all of the imports after this line can be put inside function to
 # speed up the `from sympy import *` command.
@@ -348,7 +348,6 @@ def plot(*args, **kwargs):
 
 def plot_implicit(expr, var_start_end_x, var_start_end_y, **kwargs):
     series_arguments = ImplicitSeries(expr, var_start_end_x, var_start_end_y)
-    print series_arguments
     show = kwargs.pop('show', True)
     p = Plot(series_arguments, **kwargs)
     if show:
@@ -797,8 +796,7 @@ class ImplicitSeries(BaseSeries):
         func = experimental_lambdify((self.var_x, self.var_y), self.expr, use_interval=True)
         #contour array, acts like a bitmap
         contour = np.zeros( (WIDTH, HEIGHT))
-        k = fractions.gcd(WIDTH, HEIGHT)
-        k = int(np.log2(fractions.gcd(k, 2**int(np.log2(k)))))
+        k = 6
         interval_list = []
 
         xsample = [x for x in xrange(0, WIDTH + 1, 2**k)]
@@ -817,9 +815,9 @@ class ImplicitSeries(BaseSeries):
 
                 #Convert the array indices to x and y values
                 xa = self.start_x + xindexa * (self.end_x - self.start_x) / WIDTH
-                xb = self.start_x + xindexb * (self.end_x - self.end_x) / WIDTH
+                xb = self.start_x + xindexb * (self.end_x - self.start_x) / WIDTH
                 ya = self.start_y + yindexa * (self.end_y - self.start_y) / HEIGHT
-                yb = self.end_y + yindexb * (self.end_y - self.end_x) / HEIGHT
+                yb = self.start_y + yindexb * (self.end_y - self.start_y) / HEIGHT
                 intervalx = interval(xa, xb)
                 intervaly = interval(ya, yb)
                 func_eval = func(intervalx, intervaly)
@@ -840,8 +838,8 @@ class ImplicitSeries(BaseSeries):
                     temp_interval_list.append([b, c])
                     temp_interval_list.append([b, d])
             return temp_interval_list
+        while k >= 0 and len(interval_list):
 
-        while k and len(interval_list):
             interval_list = refine_pixels(interval_list)
             k = k - 1
 
