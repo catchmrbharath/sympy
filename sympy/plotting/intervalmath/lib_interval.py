@@ -4,12 +4,12 @@ import numpy as np
 interval arithmetic"
 
 #Monotonic
-def interval_exp(x):
+def exp(x):
     x = interval(x)
     return interval(np.exp(x.start), np.exp(x.end))
 
 #Monotonic
-def interval_log(x):
+def log(x):
     x = interval(x)
     if x.end <= 0:
         return inteval(-np.inf, -np.inf)
@@ -19,7 +19,7 @@ def interval_log(x):
         return interval(np.log(x.start), np.log(x.end))
 
 #Monotonic
-def interval_log10(x):
+def log10(x):
     x = interval(x)
     if x.end <= 0:
         return inteval(-np.inf, -np.inf)
@@ -29,13 +29,13 @@ def interval_log10(x):
         return interval(np.log10(x.start), np.log10(x.end))
 
 #Monotonic
-def interval_atan(x):
+def atan(x):
     x = interval(x)
     return interval(np.atan(x.start), np.atan(x.end))
 
 
 #periodic
-def interval_sin(x):
+def sin(x):
     x = interval(x)
     if not (np.isfinite(x.start) and np.isfinite(x.end)):
         return interval(-1, 1)
@@ -59,7 +59,7 @@ def interval_sin(x):
         return interval(start, end)
 
 #periodic
-def interval_cos(x):
+def cos(x):
     x = interval(x)
     if not (np.isfinite(x.start) and np.isfinite(x.end)):
         return interval(-1, 1)
@@ -86,23 +86,6 @@ def interval_cos(x):
             start = -1
         return interval(start, end)
 
-def interval_tan(x):
-    return interval_sin(x) / interval_cos(x)
-    #x = interval(x)
-    #na, a = divmod(x.start, np.pi / 2.0)
-    #nb, b = divmod(x.end, np.pi / 2.0)
-    #if x.start < 0:
-        #na = -1 - na
-    #if x.end < 0:
-        #nb = -1 - nb
-    #start = min(np.tan(x.start), np.tan(x.end))
-    #end = max(np.tan(x.start), np.tan(x.end))
-    #if nb - na > 4:
-        #return interval(-np.inf, np.inf)
-    #else:
-        #if (na - 2) // 4 == (nb - 2) // 4:
-            #return interval(start, end)
-        #else:
-            ##can be improved after we have interval sets
-            #return interval(-np.inf, np.inf)
+def tan(x):
+    return sin(x) / cos(x)
 

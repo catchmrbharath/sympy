@@ -362,7 +362,21 @@ class interval(object):
             return NotImplemented
         elif isinstance(t, (float, int)):
             if t == int(t):
-                return interval(s.start**t, s.end ** t)
+                if t > 0:
+                    return interval(s.start**t, s.end ** t)
+                else:
+                    if s.start != 0 and s.end != 0:
+                        return interval(s.start**t, s.end ** t)
+                    else:
+                        if s.start == 0 and s.end == 0:
+                            return interval(np.inf, np.inf)
+                        elif s.start!= 0 and s.end ==0:
+                            return interval(-np.inf, s.start ** t)
+                        else:
+                            return interval( s.end ** t, np.inf)
+
+                    
+
 
 
 
