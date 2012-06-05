@@ -793,6 +793,7 @@ class ImplicitSeries(BaseSeries):
     def get_meshes(self):
         WIDTH = 1024
         HEIGHT = 1024
+        is_equality = isinstance(self.expr, Equality)
         func = experimental_lambdify((self.var_x, self.var_y), self.expr, use_interval=True)
         #contour array, acts like a bitmap
         contour = np.zeros( (WIDTH, HEIGHT))
@@ -823,9 +824,9 @@ class ImplicitSeries(BaseSeries):
                 func_eval = func(intervalx, intervaly)
                 #The expression is valid in the interval. Change the contour array
                 #values to 1.
-                if func_eval == True:
+                if func_eval == True and not is_equality:
                     contour[yindexa:yindexb, xindexa:xindexb] = 1
-                elif func_eval == None:
+                elif func_eval == None or (is_equality and not (func_eval == False)):
                     #Subdivide
                     avgx_index = (xindexa + xindexb) // 2
                     avgy_index = (yindexa + yindexb) // 2
