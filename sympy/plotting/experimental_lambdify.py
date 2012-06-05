@@ -72,6 +72,7 @@ from sympy import Symbol, NumberSymbol, I, zoo, oo
 from sympy.external import import_module
 np = import_module('numpy')
 import warnings
+import intervalmath
 
 #TODO debuging output
 
@@ -188,7 +189,8 @@ class Lambdifier(object):
                                    complex_wrap_evalf=False,
                                    use_np=False,
                                    use_python_math=False,
-                                   use_python_cmath=False):
+                                   use_python_cmath=False,
+                                   use_interval=False):
 
         self.print_lambda = print_lambda
         self.use_evalf = use_evalf
@@ -197,6 +199,7 @@ class Lambdifier(object):
         self.use_np = use_np
         self.use_python_math = use_python_math
         self.use_python_cmath = use_python_cmath
+        self.use_interval = use_interval
 
         # Constructing the argument string
         if not all([isinstance(a, Symbol) for a in args]):
@@ -229,6 +232,8 @@ class Lambdifier(object):
                 namespace.update({'np' : __import__('numpy')})
             except ImportError:
                 raise ImportError('experimental_lambdify failed to import numpy.')
+        if use_interval:
+            namespace.update({'imath': __import__('intervalmath')})
 
         # Construct the lambda
         if self.print_lambda:
@@ -354,6 +359,15 @@ class Lambdifier(object):
             'E' :'cmath.e',
             }
 
+    interval_functions_same = {
+       'sin' , 'cos', 'exp', 'tan', 'atan'
+       }
+
+    interval_functions_different = {
+            'ln':'log'
+            }
+
+
     ###
     # mpmath, etc
     ###
@@ -392,6 +406,11 @@ class Lambdifier(object):
                 dict_fun[s] = 'cmath.'+s
             for k, v in self.cmath_functions_different.iteritems():
                 dict_fun[k] = 'cmath.'+v
+        if self.use_interval:
+            for s in self.interval_functions_same:
+                dict_fun[s] = 'imath.'+s
+            for k, v in self.interval_functions_different.iteritems():
+                dict_fun[k] = 'imath.'+v
         return dict_fun
 
     ##############################################################################
