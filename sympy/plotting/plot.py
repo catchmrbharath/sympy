@@ -29,7 +29,7 @@ from sympy.external import import_module
 from sympy.core.compatibility import reduce
 
 from experimental_lambdify import vectorized_lambdify, experimental_lambdify
-from sympy.core.relational import Equality
+from sympy.core.relational import Equality, GreaterThan, LessThan
 import fractions
 from intervalmath import interval
 
@@ -839,18 +839,23 @@ class ImplicitSeries(BaseSeries):
                     temp_interval_list.append([b, d])
             return temp_interval_list
         while k >= 0 and len(interval_list):
-
             interval_list = refine_pixels(interval_list)
             k = k - 1
-
         #Check whether the expression represents an equality
         #If it represents an equality, then none of the intervals
         #would have satisfied the expression due to floating point
         #differences. Add all the undecided values to the plot.
-        if isinstance(self.expr, Equality):
+        if isinstance(self.expr, (Equality, GreaterThan, LessThan)):
             for intervals in interval_list:
                 xindexa, xindexb = intervals[0].start, intervals[0].end
                 yindexa, yindexb = intervals[1].start, intervals[1].end
+                xa = self.start_x + xindexa * (self.end_x - self.start_x) / WIDTH
+                xb = self.start_x + xindexb * (self.end_x - self.start_x) / WIDTH
+                ya = self.start_y + yindexa * (self.end_y - self.start_y) / HEIGHT
+                yb = self.start_y + yindexb * (self.end_y - self.start_y) / HEIGHT
+                intervalx = interval(xa, xb)
+                intervaly = interval(ya, yb)
+                #print intervalx, intervaly
                 contour[yindexa:yindexb, xindexa:xindexb] = 1
         xvals = np.linspace(self.start_x, self.end_x, WIDTH)
         yvals = np.linspace(self.start_y, self.end_y, WIDTH)
