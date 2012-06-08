@@ -824,9 +824,12 @@ class ImplicitSeries(BaseSeries):
                 func_eval = func(intervalx, intervaly)
                 #The expression is valid in the interval. Change the contour array
                 #values to 1.
-                if func_eval == True and not is_equality:
+                if func_eval[1] is False or func_eval[0] is False:
+                    pass
+                elif func_eval == (True, True) and not is_equality:
                     contour[yindexa:yindexb, xindexa:xindexb] = 1
-                elif func_eval == None or (is_equality and not (func_eval == False)):
+                elif func_eval[1] is None or func_eval[0] is None \
+                        or is_equality:
                     #Subdivide
                     avgx_index = (xindexa + xindexb) // 2
                     avgy_index = (yindexa + yindexb) // 2
@@ -856,8 +859,10 @@ class ImplicitSeries(BaseSeries):
                 yb = self.start_y + yindexb * (self.end_y - self.start_y) / HEIGHT
                 intervalx = interval(xa, xb)
                 intervaly = interval(ya, yb)
+                func_eval = func(intervalx, intervaly)
                 #print intervalx, intervaly
-                contour[yindexa:yindexb, xindexa:xindexb] = 1
+                if func_eval[1] and func_eval[0] is not False:
+                    contour[yindexa:yindexb, xindexa:xindexb] = 1
         xvals = np.linspace(self.start_x, self.end_x, WIDTH)
         yvals = np.linspace(self.start_y, self.end_y, WIDTH)
 
