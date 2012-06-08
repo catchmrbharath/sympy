@@ -116,3 +116,16 @@ def cos(x):
 def tan(x):
     return sin(x) / cos(x)
 
+#Monotonic
+def sqrt(x):
+    if isinstance(x, (int, float)):
+        return interval(np.sqrt(x))
+    elif isinstance(x, interval):
+        if x.end < 0:
+            return interval(-np.inf, np.inf, is_valid = False)
+        elif x.start < 0:
+            return interval(-np.inf, np.inf, is_valid = None)
+        else:
+            return interval(np.sqrt(x.start), np.sqrt(x.end), is_valid = x.is_valid)
+    else:
+        raise NotImplemented
