@@ -791,8 +791,8 @@ class ImplicitSeries(BaseSeries):
                 str((self.start_y, self.end_y)))
 
     def get_meshes(self):
-        WIDTH = 1024
-        HEIGHT = 1024
+        WIDTH = 512
+        HEIGHT = 512
         is_equality = isinstance(self.expr, Equality)
         func = experimental_lambdify((self.var_x, self.var_y), self.expr, use_interval=True)
         #contour array, acts like a bitmap
