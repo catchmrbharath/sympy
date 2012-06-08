@@ -359,12 +359,12 @@ class Lambdifier(object):
             'E' :'cmath.e',
             }
 
-    interval_functions_same = {
-       'sin' , 'cos', 'exp', 'tan', 'atan'
-       }
+    interval_functions_same = [
+       'sin' , 'cos', 'exp', 'tan', 'atan', 'log'
+       'sqrt',
+       ]
 
     interval_functions_different = {
-            'ln':'log'
             }
 
 
