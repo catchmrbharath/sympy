@@ -360,7 +360,7 @@ class Lambdifier(object):
             }
 
     interval_functions_same = [
-       'sin' , 'cos', 'exp', 'tan', 'atan', 'log'
+       'sin' , 'cos', 'exp', 'tan', 'atan', 'log',
        'sqrt',
        ]
 
