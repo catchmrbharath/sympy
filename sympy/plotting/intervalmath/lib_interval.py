@@ -69,7 +69,7 @@ def sin(x):
         if nb - na > 4:
             return interval(-1, 1, is_valid = x.is_valid)
         elif na == nb:
-            return interval(start, end, x.is_valid)
+            return interval(start, end, is_valid = x.is_valid)
         else:
             if (na - 1) // 4 != (nb - 1) // 4:
                 #sin has max
@@ -77,7 +77,7 @@ def sin(x):
             if (na - 3) // 4 != (nb - 3) // 4:
                 #sin has min
                 start = -1
-            return interval(start, end, x.is_valid)
+            return interval(start, end, is_valid = x.is_valid)
     else:
         raise NotImplemented
 
