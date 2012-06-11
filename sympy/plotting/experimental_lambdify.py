@@ -365,6 +365,8 @@ class Lambdifier(object):
        ]
 
     interval_functions_different = {
+            'Min': 'imin',
+            'Max': 'imax',
             }
 
 
