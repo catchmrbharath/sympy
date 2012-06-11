@@ -1,10 +1,11 @@
 from interval_arithmetic import interval
 import numpy as np
-"Library for interval arithmetic. Contains all the implemented functions for \
-interval arithmetic"
+#Library for interval arithmetic. Contains all the implemented functions for
+#interval arithmetic
 
 #Monotonic
 def exp(x):
+    """evaluates the exponential of an interval"""
     if isinstance(x, (int, float)):
         return interval(np.exp(x), np.exp(x))
     elif isinstance(x, interval):
@@ -14,6 +15,7 @@ def exp(x):
 
 #Monotonic
 def log(x):
+    """evauates the natural logarithm of an interval"""
     if isinstance(x, (int, float)):
         if x <= 0:
             return interval(-np.inf, np.inf, is_valid = False)
@@ -28,9 +30,12 @@ def log(x):
             return interval(-np.inf, np.inf, is_valid = None)
 
         return interval(np.log(x.start), np.log(x.end))
+    else:
+        raise NotImplementedError
 
 #Monotonic
 def log10(x):
+    """evaluates the logarithm to the base 10 of an interval"""
     if isinstance(x, (int, float)):
         if x <= 0:
             return interval(-np.inf, np.inf, is_valid = False)
@@ -45,29 +50,31 @@ def log10(x):
             return interval(-np.inf, np.inf, is_valid = None)
         return interval(np.log10(x.start), np.log10(x.end))
     else:
-        raise NotImplemented
+        raise NotImplementedError
 
 #Monotonic
 def atan(x):
+    """evaluates the tan inverse of an interval"""
     if isinstance(x, (int, float)):
         return interval(np.arctan(x))
     elif isinstance(x, interval):
-        start = np.arctan(x,start)
+        start = np.arctan(x.start)
         end = np.arctan(x.end)
         return interval(start, end, is_valid = x.is_valid)
     else:
-        raise NotImplemented
+        raise NotImplementedError
 
 
 #periodic
 def sin(x):
+    """evaluates the sine of an interval"""
     if isinstance(x, (int, float)):
         return interval(np.sin(x))
     elif isinstance(x, interval):
         if not (np.isfinite(x.start) and np.isfinite(x.end)):
             return interval(-1, 1, is_valid = x.is_valid)
-        na, a = divmod(x.start, np.pi / 2.0)
-        nb, b = divmod(x.end, np.pi / 2.0)
+        na, __ = divmod(x.start, np.pi / 2.0)
+        nb, __ = divmod(x.end, np.pi / 2.0)
         start = min(np.sin(x.start), np.sin(x.end))
         end = max(np.sin(x.start), np.sin(x.end))
         if nb - na > 4:
@@ -83,17 +90,18 @@ def sin(x):
                 start = -1
             return interval(start, end, is_valid = x.is_valid)
     else:
-        raise NotImplemented
+        raise NotImplementedError
 
 #periodic
 def cos(x):
+    """Evaluates the cos of an interval"""
     if isinstance(x, (int, float)):
         return interval(np.sin(x))
     elif isinstance(x, interval):
         if not (np.isfinite(x.start) and np.isfinite(x.end)):
             return interval(-1, 1, is_valid = x.is_valid)
-        na, a = divmod(x.start, np.pi / 2.0)
-        nb, b = divmod(x.end, np.pi / 2.0)
+        na, __ = divmod(x.start, np.pi / 2.0)
+        nb, __ = divmod(x.end, np.pi / 2.0)
         if x.start < 0:
             na = -1 - na
         if x.end < 0:
@@ -115,13 +123,15 @@ def cos(x):
                 start = -1
             return interval(start, end, is_valid = x.is_valid)
     else:
-        raise NotImplemented
+        raise NotImplementedError
 
 def tan(x):
+    """Evaluates the tan of an interval"""
     return sin(x) / cos(x)
 
 #Monotonic
 def sqrt(x):
+    """Evaluates the square root of an interval"""
     if isinstance(x, (int, float)):
         return interval(np.sqrt(x))
     elif isinstance(x, interval):
@@ -130,7 +140,11 @@ def sqrt(x):
         elif x.start < 0:
             return interval(-np.inf, np.inf, is_valid = None)
         else:
-            return interval(np.sqrt(x.start), np.sqrt(x.end), is_valid = x.is_valid)
+            return interval(np.sqrt(x.start), np.sqrt(x.end),
+                    is_valid = x.is_valid)
+    else:
+        raise NotImplementedError
+
 def imin(*args):
     """Evaluates the minimum of a list of intervals"""
     if not all(isinstance(arg, (int, float, interval)) for arg in args):
