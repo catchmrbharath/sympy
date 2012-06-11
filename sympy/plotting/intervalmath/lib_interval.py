@@ -5,8 +5,12 @@ interval arithmetic"
 
 #Monotonic
 def exp(x):
-    x = interval(x)
-    return interval(np.exp(x.start), np.exp(x.end))
+    if isinstance(x, (int, float)):
+        return interval(np.exp(x), np.exp(x))
+    elif isinstance(x, interval):
+        return interval(np.exp(x.start), np.exp(x.end), is_valid = x.is_valid)
+    else:
+        raise NotImplementedError
 
 #Monotonic
 def log(x):
