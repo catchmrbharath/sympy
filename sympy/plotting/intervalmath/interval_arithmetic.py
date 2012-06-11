@@ -8,7 +8,6 @@ arithmetic, use mpmath's interval arithmetic.
 
 from sympy.external import import_module
 np = import_module('numpy')
-import warnings
 
 # This module implements interval arithmetic using numpy and
 #python floating points. The rounding up and down is not handled
@@ -285,7 +284,7 @@ class interval(object):
                 if not np.isfinite(s.start) or not np.isfinite(s.end):
                     return interval(-np.inf, np.inf, is_valid = valid)
 
-            if s.start >=0:
+            if s.start >= 0:
                 #positive * positive
                 if t.start >= 0:
                     start = s.start * t.start
@@ -297,7 +296,7 @@ class interval(object):
                     return interval(start, end, is_valid = valid)
 
                 #positive * negative 
-                elif t.end <=0:
+                elif t.end <= 0:
                     start = s.end * t.start
                     end = s.start * t.end
                     if np.isnan(start):
