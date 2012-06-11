@@ -30,7 +30,6 @@ from sympy.core.compatibility import reduce
 
 from experimental_lambdify import vectorized_lambdify, experimental_lambdify
 from sympy.core.relational import Equality, GreaterThan, LessThan
-import fractions
 from intervalmath import interval
 
 #TODO probably all of the imports after this line can be put inside function to
@@ -803,7 +802,7 @@ class ImplicitSeries(BaseSeries):
         xsample = [x for x in xrange(0, WIDTH + 1, 2**k)]
         ysample = [y for y in xrange(0, HEIGHT + 1, 2**k)]
         xinter = [interval(x1, x2) for x1, x2 in zip(xsample[:-1], xsample[1:])]
-        yinter = [interval(y1, y2) for y1, y2 in zip(xsample[:-1], xsample[1:])]
+        yinter = [interval(y1, y2) for y1, y2 in zip(ysample[:-1], ysample[1:])]
         interval_list = [[x, y] for x in xinter for y in yinter]
 
         #recursive call refinepixels which subdivides the intervals which are neither
