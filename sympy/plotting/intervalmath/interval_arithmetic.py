@@ -60,13 +60,6 @@ class interval(object):
         else:
             raise ValueError("interval takes a maximum of two float values as \
                     arguments")
-    
-    def start(self):
-        return self.start
-
-    def end(self):
-        return self.end
-
     @property
     def mid(self):
         return (self.start + self.end) / 2.0
