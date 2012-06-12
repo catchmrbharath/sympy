@@ -29,6 +29,7 @@ from sympy.external import import_module
 from sympy.core.compatibility import reduce
 
 from experimental_lambdify import vectorized_lambdify
+import warnings
 
 #TODO probably all of the imports after this line can be put inside function to
 # speed up the `from sympy import *` command.
@@ -866,7 +867,7 @@ class MatplotlibBackend(BaseBackend):
                     collection.set_color(s.line_color)
             if s.is_3Dsurface and s.surface_color:
                 if matplotlib.__version__ < "1.2.0": #TODO in the distant future remove this check
-                    warn.waring('The version of matplotlib is too old to use surface coloring.')
+                    warnings.warn('The version of matplotlib is too old to use surface coloring.')
                 elif isinstance(s.surface_color, (float,int)) or callable(s.surface_color):
                     color_array = s.get_color_array()
                     color_array = color_array.reshape(color_array.size)
@@ -885,7 +886,8 @@ class MatplotlibBackend(BaseBackend):
             self.ax.set_xlim(parent.xlim)
         if parent.ylim:
             self.ax.set_ylim(parent.ylim)
-        self.ax.set_autoscale_on(parent.autoscale)
+        if not isinstance(self.ax, Axes3D) or matplotlib.__version__>= '1.2.0': #XXX in the distant future remove this check
+            self.ax.set_autoscale_on(parent.autoscale)
         if parent.axis_center:
             val = parent.axis_center
             if isinstance(self.ax, Axes3D):
