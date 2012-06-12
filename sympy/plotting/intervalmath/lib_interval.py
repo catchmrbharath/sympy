@@ -183,3 +183,70 @@ def imax(*args):
                         for a in new_args]
 
         return interval(max(start_array), max(end_array))
+
+#Monotonic
+def sinh(x):
+    """Evaluates the hyperbolic sine of an interval"""
+    if isinstance(x, (int, float)):
+        return interval(np.sinh(x), np.sinh(x))
+    elif isinstance(x, interval):
+        return interval(np.sinh(x.start), np.sinh(x.end), is_valid = x.is_valid)
+    else:
+        raise NotImplementedError
+
+def cosh(x):
+    """Evaluates the hyperbolic cos of an interval"""
+    if isinstance(x, (int, float)):
+        return interval(np.cosh(x), np.cosh(x))
+    elif isinstance(x, interval):
+        #both signs
+        if x.start < 0 and x.end > 0:
+            end = max(np.cosh(x.start), np.cosh(x.end))
+            return interval(1, end, is_valid = x.is_valid)
+        else:
+            #Monotonic
+            return interval(np.cosh(x.start), np.cosh(x.end), is_valid = x.is_valid)
+    else:
+        raise NotImplementedError
+
+#Monotonic
+def tanh(x):
+    """Evaluates the hyperbolic tan of an interval"""
+    if isinstance(x, (int, float)):
+        return interval(np.tanh(x), np.tanh(x))
+    elif isinstance(x, interval):
+        return interval(np.tanh(x.start), np.tanh(x.end), is_valid = x.is_valid)
+    else:
+        raise NotImplementedError
+
+def arcsin(x):
+    """Evaluates the inverse sine of an interval"""
+    if isinstance(x, (int, float)):
+        if abs(x) > 1:
+            return interval(-np.inf, np.inf, is_valid = False)
+        else:
+            return interval(np.arcsin(x), np.arcsin(x))
+    elif isinstance(x, interval):
+        if not x.is_valid is False or x.start > 1 or x.end < -1:
+            return interval(-np.inf, np.inf, is_valid = False)
+        elif x.start < -1 or x.end > 1:
+            return interval(-np.inf, np.inf, is_valid = None)
+        else:
+            return interval(np.arcsin(x.start), np.arcsin(x.end), is_valid = x.is_valid)
+
+def arccos(x):
+    """Evaluates the inverse cos of an interval"""
+    if isinstance(x, (int, float)):
+        if abs(x) > 1:
+            return interval(-np.inf, np.inf, is_valid = False)
+        else:
+            return interval(np.arccos(x), np.arccos(x))
+    elif isinstance(x, interval):
+        if not x.is_valid is False or x.start > 1 or x.end < -1:
+            return interval(-np.inf, np.inf, is_valid = False)
+        elif x.start < -1 or x.end > 1:
+            return interval(-np.inf, np.inf, is_valid = None)
+        else:
+            return interval(np.arccos(x.start), np.arccos(x.end), is_valid = x.is_valid)
+
+
