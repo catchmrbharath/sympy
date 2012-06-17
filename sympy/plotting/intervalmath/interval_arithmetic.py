@@ -1,7 +1,7 @@
 """
 Interval Arithmetic for plotting.
-This does not implement interval arithmetic accurately and 
-hence cannot be used for other purposes. If you want to use interval 
+This does not implement interval arithmetic accurately and
+hence cannot be used for other purposes. If you want to use interval
 arithmetic, use mpmath's interval arithmetic.
 """
 
@@ -14,11 +14,11 @@ np = import_module('numpy')
 #and hence this is not an accurate implementation of interval
 #arithmetic.
 
+
 #Q: Why use numpy? Why not simply use mpmath's interval arithmetic?
 #A: mpmath's interval arithmetic simulates a floating point unit
 #and hence is slow, while numpy evaluations are orders of magnitude
-#faster. The plotting implemented using mpmath was slow. Hence, we 
-#are using numpy.
+#faster.
 
 #Q: Why create a seperate class for intervals? Why not use sympy's
 #Interval Sets?
@@ -31,16 +31,40 @@ np = import_module('numpy')
 #rounding is handled for very few functions in those libraries.
 
 #Q Will my plots be affected?
-#A Yes. The interval arithmetic module based on  suffers the same 
-#problems as that of floating point arithmetic. Plotting based on 
-#mpmath will also implemented for plots that would require high 
-#precision. 
+#A It will not affect most of the plots. The interval arithmetic
+#module based suffers the same problems as that of floating point
+#arithmetic. Plotting based on mpmath will also be implemented for
+#plots that would require high precision.
 
 class interval(object):
-    """ Represents an interval containing floating point as start and 
-    end of the interval. The comparision of two intervals is done through
-    a three - valued logic, True, False, and None."""
-    
+    """ Represents an interval containing floating points as start and
+    end of the interval."""
+    #The is_valid variable tracks whether the interval obtained as the result
+    #result of the function is in the domain and is continuous.
+    #
+    #True: Represents the interval result of a function is continuous and
+    #in the domain of the function.
+    #
+    #False: The interval argument of the function was not in the domain of
+    #the function, hence the is_valid of the result interval is False
+    #
+    #None: The function was not continuous over the interval or
+    #      The function's argument interval is partly in the domain of the
+    #        function
+
+    #The comparision of two intervals returns a tuple of two 3-valued logic
+    #values.
+
+    #The first value determines the comparision as follows:
+    #True: If the comparision is True throughout the intervals.
+    #False: If the comparision is False throughout the intervals.
+    #None: If the comparision is True for some part of the intervals.
+
+    #The second value is determined as follows:
+    #True: If both the intervals in comparision are valid.
+    #False: If atleast one of the intervals is False, else
+    #None
+
     def __init__(self, *args, **kwargs):
         self.is_valid = kwargs.pop('is_valid', True)
         if len(args) == 1:
