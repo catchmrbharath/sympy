@@ -359,14 +359,21 @@ class Lambdifier(object):
             'E' :'cmath.e',
             }
 
+    interval_not_functions = {
+            'pi':'cmath.pi',
+            'E':'cmath.e'
+            }
     interval_functions_same = [
        'sin' , 'cos', 'exp', 'tan', 'atan', 'log',
-       'sqrt',
+       'sqrt','cosh', 'sinh', 'tanh', 'floor',
+       'acos', 'asin', 'acosh', 'asinh', 'atanh'
        ]
 
     interval_functions_different = {
             'Min': 'imin',
             'Max': 'imax',
+            'ceiling':'ceil',
+
             }
 
 
