@@ -1,7 +1,7 @@
 """Plotting module that can plot 2D and 3D functions
 """
 try:
-    def PygletPlot(*args, **kwargs):
+    def Plot(*args, **kwargs):
         """
         Plot Examples
         =============
@@ -54,7 +54,7 @@ try:
         (function arguments) will interpret your arguments as a
         Cartesian plot if you provide one function and a parametric
         plot if you provide two or three functions. Similarly, the
-        arguments will be interpreted as a curve if one variable is
+        arguments will be interpreted as a curve is one variable is
         used, and a surface if two are used.
 
         Supported mode names by number of variables:
@@ -123,8 +123,9 @@ try:
         """
 
         import plot
-        return plot.PygletPlot(*args, **kwargs)
+        return plot.Plot(*args, **kwargs)
 
 except Exception, e:
-    def PygletPlot(*args, **kwargs):
+    def Plot(*args, **kwargs):
         raise e
+
