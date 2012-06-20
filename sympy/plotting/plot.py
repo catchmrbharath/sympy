@@ -35,6 +35,7 @@ from experimental_lambdify import vectorized_lambdify
 np = import_module('numpy')
 
 # Backend specific imports - matplotlib
+#test stuff
 matplotlib = import_module('matplotlib',
     __import__kwargs={'fromlist':['pyplot', 'cm', 'collections']},
     min_module_version='1.0.0')
