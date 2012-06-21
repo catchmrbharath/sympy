@@ -1,5 +1,5 @@
 from sympy import (plot, pi, sin, cos, Symbol, Integral, summation, sqrt, log,
-oo, LambertW, I)
+oo, LambertW, I, plot_implicit, Eq, tan)
 from tempfile import NamedTemporaryFile
 import warnings
 
@@ -171,6 +171,13 @@ def plot_and_save(name):
     plot(([x, -x], x**2, sin(x)), (x*y,), show=False).save(tmp_file())
 
 
+    #implicit plot tests
+    plot_implicit(Eq(y, cos(x)), (x, -5, 5), (y, -2, 2), show=False)
+    plot_implicit(Eq(y**2, x**3 - x), (x, -5, 5), (y, -4, 4), show=False)
+    plot_implicit(y > 1 / x, (x, -5, 5), (y, -2, 2), show=False)
+    plot_implicit(y < 1 / tan(x), (x, -5, 5), (y, -2, 2), show=False)
+    plot_implicit(y >= 2 * sin(x) * cos(x), (x, -5, 5), (y, -2, 2), show=False)
+    plot_implicit(y <= x**2, (x, -3, 3), (y, -1, 5), show=False)
 def test_matplotlib():
     try:
         import matplotlib
