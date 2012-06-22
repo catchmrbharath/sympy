@@ -1,7 +1,7 @@
-"""Implicit plotting module for SymPy 
+"""Implicit plotting module for SymPy
 
 The module implements a data series called ImplicitSeries which is used by
-``Plot`` class to plot implicit plots for different backends. The module 
+``Plot`` class to plot implicit plots for different backends. The module
 implements plotting using interval arithmetic.
 
 See Also
@@ -10,7 +10,7 @@ sympy.plotting.plot
 
 References
 ==========
-- Jeffrey Allen Tupper. Reliable Two-Dimensional Graphing Methods for 
+- Jeffrey Allen Tupper. Reliable Two-Dimensional Graphing Methods for
 Mathematical Formulae with Two Free Variables.
 
 - Jeffrey Allen Tupper. Graphing Equations with Generalized Interval
@@ -23,13 +23,16 @@ from experimental_lambdify import experimental_lambdify
 from intervalmath import interval
 from sympy.core.relational import Equality, GreaterThan, LessThan
 from sympy.external import import_module
-from sympy import sympify, Expr 
+from sympy import sympify, Expr
 from sympy.core.compatibility import set_union
 
 np = import_module('numpy')
+
+
 class ImplicitSeries(BaseSeries):
     """ Representation for Implicit plot """
     is_implicit = True
+
     def __init__(self, expr, var_start_end_x, var_start_end_y):
         super(ImplicitSeries, self).__init__()
         self.expr = sympify(expr)
@@ -51,8 +54,8 @@ class ImplicitSeries(BaseSeries):
                 str((self.start_y, self.end_y)))
 
     def get_meshes(self):
-        WIDTH = 512  #TODO: Add as an attribute which can be changed
-        HEIGHT = 512 #TODO: Add as an attribute which can be changed
+        WIDTH = 512   #TODO: Add as an attribute which can be changed
+        HEIGHT = 512  #TODO: Add as an attribute which can be changed
         is_equality = isinstance(self.expr, Equality)
         func = experimental_lambdify((self.var_x, self.var_y), self.expr, use_interval=True)
         xinterval = interval(self.start_x, self.end_x)
@@ -134,6 +137,7 @@ class ImplicitSeries(BaseSeries):
         yvals = np.linspace(self.start_y, self.end_y, WIDTH)
 
         return xvals, yvals, contour
+
 
 def plot_implicit(expr, var_start_end_x, var_start_end_y, **kwargs):
     """A plot function to plot implicit equations / inequations.

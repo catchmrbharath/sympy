@@ -28,7 +28,7 @@ from sympy import sympify, Expr, Tuple, Dummy
 from sympy.external import import_module
 from sympy.core.compatibility import set_union
 import warnings
-from experimental_lambdify import vectorized_lambdify 
+from experimental_lambdify import vectorized_lambdify
 
 #TODO probably all of the imports after this line can be put inside function to
 # speed up the `from sympy import *` command.
