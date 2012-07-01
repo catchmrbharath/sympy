@@ -316,11 +316,6 @@ class interval(object):
         else:
             NotImplemented
 
-    def __truediv__(self, other):
-        return self.__div__(other)
-
-    def __rtruediv__(self, other):
-        return self.__rdiv__(other)
 
     def __div__(self, other):
         #Both None and False are handled
@@ -372,6 +367,8 @@ class interval(object):
                     start = self.start / other. start
                     end = self.end / other.start
                     return interval(start, end)
+    __truediv__ = __div__
+    __rtruediv__ = __rdiv__
 
     def __pow__(self, other):
         #Implements only power to an integer.
