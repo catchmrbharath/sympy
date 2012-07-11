@@ -1,12 +1,20 @@
 from sympy import (plot, pi, sin, cos, Symbol, Integral, summation, sqrt, log,
-oo, LambertW, I, plot_implicit, Eq, tan)
+oo, LambertW, I, plot_implicit, Eq, tan, exp, Or)
 from tempfile import NamedTemporaryFile
+from sympy import And
 import warnings
+from sympy.external import import_module
+numpy = import_module('numpy')
+matplotlib = import_module('matplotlib')
+if not numpy or not matplotlib:
+    disabled = True
+
 
 def tmp_file(name=''):
     return NamedTemporaryFile(suffix='.png').name
 
-def plot_and_save(name):
+def test_plot():
+    name = 'temp'
     x = Symbol('x')
     y = Symbol('y')
     z = Symbol('z')
@@ -172,16 +180,25 @@ def plot_and_save(name):
 
 
     #implicit plot tests
-    plot_implicit(Eq(y, cos(x)), (x, -5, 5), (y, -2, 2), show=False)
-    plot_implicit(Eq(y**2, x**3 - x), (x, -5, 5), (y, -4, 4), show=False)
-    plot_implicit(y > 1 / x, (x, -5, 5), (y, -2, 2), show=False)
-    plot_implicit(y < 1 / tan(x), (x, -5, 5), (y, -2, 2), show=False)
-    plot_implicit(y >= 2 * sin(x) * cos(x), (x, -5, 5), (y, -2, 2), show=False)
-    plot_implicit(y <= x**2, (x, -3, 3), (y, -1, 5), show=False)
-def test_matplotlib():
-    try:
-        import matplotlib
-        import numpy
-        plot_and_save('test')
-    except ImportError:
-        pass
+    plot_implicit(Eq(y, cos(x)), (x, -5, 5),
+            (y, -2, 2), show=False).save(tmp_file())
+    plot_implicit(Eq(y**2, x**3 - x), (x, -5, 5),
+            (y, -4, 4), show=False).save(tmp_file())
+    plot_implicit(y > 1 / x, (x, -5, 5),
+            (y, -2, 2), show=False).save(tmp_file())
+    plot_implicit(y < 1 / tan(x), (x, -5, 5),
+            (y, -2, 2), show=False).save(tmp_file())
+    plot_implicit(y >= 2 * sin(x) * cos(x), (x, -5, 5),
+            (y, -2, 2), show=False).save(tmp_file())
+    plot_implicit(y <= x**2, (x, -3, 3),
+            (y, -1, 5), show=False).save(tmp_file())
+
+    #Test all input args for plot_implicit
+    plot_implicit(Eq(y**2, x**3 - x), show=False).save(tmp_file())
+    plot_implicit(Eq(y**2, x**3 - x), adaptive=False,
+            show=False).save(tmp_file())
+    plot_implicit(Eq(y**2, x**3 - x), adaptive=False, points = 500,
+            show=False).save(tmp_file())
+    plot_implicit(y > x, (x, -5, 5), show=False).save(tmp_file())
+    plot_implicit(And(y > exp(x), y > x + 2), show=False).save(tmp_file())
+    plot_implicit(Or(y > x, y > -x), show=False).save(tmp_file())
