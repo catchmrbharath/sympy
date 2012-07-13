@@ -96,6 +96,19 @@ def enable_automatic_symbols(app):
 
     app.shell.set_custom_exc((NameError,), _handler)
 
+def init_qtconsole_session():
+    """Constructs a new qtconsole session"""
+    try:
+        from IPython.frontend.qt.console.qtconsoleapp import IPythonQtConsoleApp
+    except ImportError:
+        raise RuntimeError("Ipython qtconsole is not present in the system")
+    else:
+        app = IPythonQtConsoleApp()
+        app.initialize()
+        #app.kernel_manager.shell_channel.execute("%load_ext sympy.interactive.sympyprinting", silent=True)
+        app.kernel_manager.shell_channel.execute(preexec_source, silent=True)
+        app.start()
+
 def init_ipython_session(argv=[], auto=False):
     """Construct new IPython session. """
     import IPython

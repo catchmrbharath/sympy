@@ -187,7 +187,7 @@ def main():
         dest='console',
         action='store',
         default=None,
-        choices=['ipython', 'python'],
+        choices=['ipython', 'python', 'qtconsole'],
         help='select type of interactive session: ipython | python; defaults '
         'to ipython if IPython is installed, otherwise python')
 
@@ -298,8 +298,11 @@ def main():
     from sympy.utilities.exceptions import SymPyDeprecationWarning
     warnings.simplefilter("always", SymPyDeprecationWarning)
 
-    from sympy.interactive import init_session
-    init_session(ipython, **args)
+    from sympy.interactive import init_session, init_qtconsole_session
+    if session == 'qtconsole':
+        init_qtconsole_session()
+    else:
+        init_session(ipython, **args)
 
 if __name__ == "__main__":
     main()
