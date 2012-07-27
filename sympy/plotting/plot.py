@@ -29,6 +29,7 @@ from sympy.external import import_module
 from sympy.core.compatibility import set_union
 import warnings
 from experimental_lambdify import vectorized_lambdify
+import svgfig as svg
 
 #TODO probably all of the imports after this line can be put inside function to
 # speed up the `from sympy import *` command.
@@ -1028,10 +1029,67 @@ class TextBackend(BaseBackend):
 
 class DefaultBackend(BaseBackend):
     def __new__(cls, parent):
-        if matplotlib:
-            return MatplotlibBackend(parent)
-        else:
-            return TextBackend(parent)
+        return SVGFigBackend(parent)
+        #if matplotlib:
+            #return MatplotlibBackend(parent)
+        #else:
+            #return TextBackend(parent)
+
+
+class SVGFigBackend(BaseBackend):
+    def __init__(self, parent):
+        super(SVGFigBackend, self).__init__(parent)
+        are_3d = [s.is_3D for s in self.parent._series]
+        if any(are_3d):
+            raise NotImplementedError("3d plots are not supported in svgfig")
+        self.svg = svg.SVG("g")
+        #svg._canvas_defaults["width"] = "1000px"
+        #svg._canvas_defaults["height"] = "1000px"
+
+    def process_series(self):
+        parent = self.parent
+
+        collection = []
+        minx = float('inf')
+        miny = float('inf')
+        maxx = -float('inf')
+        maxy = -float('inf')
+
+        for s in self.parent._series:
+            if s.is_2Dline:
+                for point_a, point_b in s.get_segments():
+                    c = svg.Line(point_a[0], point_a[1], point_b[0], point_b[1])
+                    collection.append(c)
+                x, y = s.get_points()
+                minx = min(minx, x.min())
+                miny = min(miny, y.min())
+                maxx = max(maxx, x.max())
+                maxy = max(maxy, y.max())
+            elif s.is_implicit:
+                intervals = s.get_raster()
+                minx = s.start_x
+                maxx = s.end_x
+                miny = s.start_y
+                maxy = s.end_y
+                print minx, maxx, miny, maxy
+                for interval in intervals[0]:
+                    x1 = interval[0].start
+                    x2 = interval[1].start
+                    y1 = interval[0].end
+                    y2 = interval[1].end
+                    rect = collection.append(svg.Rect(x1, x2, y1 ,y2 , fill = 'black'))
+                    collection.append(rect)
+
+        extra_xaxis = 0.1 * (maxx - minx)
+        extra_yaxis = 0.1 * (maxy - miny)
+        plot = svg.Plot(minx - extra_xaxis, maxx + extra_xaxis, miny - extra_yaxis, maxy + extra_yaxis, arrows='a', *collection)
+        self.svg.append(plot.SVG())
+
+    def save(self):
+        self.process_series()
+        self.svg.save()
+
+    show = save
 
 
 plot_backends = {
