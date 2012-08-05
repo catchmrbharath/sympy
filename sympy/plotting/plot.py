@@ -1014,3 +1014,94 @@ def flat(x, y, z, eps=1e-3):
     vector_b_norm = np.linalg.norm(vector_b)
     cos_theta = dot_product / (vector_a_norm * vector_b_norm)
     return abs(cos_theta + 1) < eps
+
+#######Plot 2d #####
+
+def plot2d(expressions, ranges = (-10, 10), depth = 12, **kwargs):
+    """
+    A plot function to plot 2D line and parametric plots.
+
+    Arguments
+    =========
+
+    Named Arguments
+    ---------------
+    - ``expressions`` : List of expressions that has to be plotted. Parametric
+      expressions are provided as a Tuple. e.g. (cos(u), sin(u))
+    - `` ranges `` : Range of the free variable in the list expressions.
+    - ``depth`` : The recursion depth of the adaptive sampling algorithm. The
+      default value is 12. The rule of thumb is a depth of ``n`` samples a
+      maximum of ``2^{n}`` points.
+
+    Unnamed Arguments
+    -----------------
+    - ``show`` : It defaults to True if not set to False. Used to show the plot.
+
+    See Also
+    ========
+    sympy.plotting.plot.Plot
+
+    Examples
+    ========
+    Plot Expressions
+    >>> from sympy import plot, cos, sin, symbols
+    >>> x,y,u,v = symbols('x y u v')
+
+    Uses default range of (-10, 10)
+    >>> plot2d(x**2) #DOC
+
+    Plot list of plots.
+    >>> plot2d([x, x**2], (-5, 5))
+
+    Plot a parametric plot.
+    >>> plot2d((cos(u), sin(u)), (-5, 5))
+
+    Plot a parametric plot and an 2d line plot
+
+    >>> plot2d([(cos(u), sin(u)), u], (-5, 5))
+    """
+    series_arguments = []
+    plot_list = []
+    if isinstance(expressions, (tuple, Tuple)):
+        if len(expressions) == 2:
+            plot_list.append(expressions)
+        else:
+            plot_list.extend(expressions)
+    elif isinstance(expressions, list):
+        plot_list.extend(expressions)
+    else:
+        plot_list.append(expressions)
+
+    for exprs in plot_list:
+        if isinstance(exprs, (tuple, Tuple)):
+            free_symbols = list(set_union(*[e.free_symbols for e in exprs]))
+            if len(free_symbols) < 2:
+                if not len(free_symbols):
+                    default_range = Tuple(Dummy()) + ranges
+                    p = Parametric2DLineSeries(exprs[0], exprs[1], default_range)
+                else:
+                    default_range = Tuple(free_symbols[0]) + ranges
+                    p = Parametric2DLineSeries(exprs[0], exprs[1], default_range)
+                series_arguments.append(p)
+            else:
+                raise ValueError("plot2d can plot expressions with 1 free"
+                                    "variable")
+        elif isinstance(exprs, Expr):
+            free_symbols = list(exprs.free_symbols)
+            if len(free_symbols) < 2:
+                if not len(free_symbols):
+                    default_range = Tuple(Dummy()) + ranges
+                    p = LineOver1DRangeSeries(sympify(exprs), default_range)
+                else:
+                    default_range = Tuple(free_symbols[0]) + ranges
+                    p = LineOver1DRangeSeries(sympify(exprs), default_range)
+                series_arguments.append(p)
+            else:
+                raise ValueError("plot2d can plot expressions with 1 free"
+                                    "variable")
+
+    show = kwargs.pop('show', True)
+    p = Plot(*series_arguments, **kwargs)
+    if show:
+        p.show()
+    return p
