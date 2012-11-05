@@ -1,5 +1,5 @@
 from sympy import (plot_implicit, cos, Symbol, Eq, sin, re, And, Or, exp, I,
-                    tan)
+                    tan, pi)
 from sympy.plotting.plot import matplotlib, unset_show
 from tempfile import NamedTemporaryFile
 from sympy.utilities.pytest import skip
@@ -41,6 +41,7 @@ def plot_and_save():
     plot_implicit(y > cos(x), adaptive=False).save(tmp_file())
     plot_implicit(y < cos(x), adaptive=False).save(tmp_file())
     plot_implicit(And(y > cos(x), Or(y > x, Eq(y, x)))).save(tmp_file())
+    plot_implicit(y - cos(pi / x)).save(tmp_file())
 
     #Test plots which cannot be rendered using the adaptive algorithm
     #TODO: catch the warning.
